@@ -216,9 +216,7 @@ BEGIN
 END;
 $$;
 
--- ============================================================================
--- 3. STORED PROCEDURES: ENTIDAD PERFIL_DE_NECESIDAD (Inserción, Modificación, Borrado)
--- ============================================================================
+
 
 -- 3.1 Inserción de Perfil de Necesidad
 CREATE OR REPLACE PROCEDURE public.sp_insertar_perfil_necesidad(
@@ -361,11 +359,7 @@ CREATE TRIGGER trg_validar_perfil
     FOR EACH ROW
     EXECUTE FUNCTION public.fn_validar_perfil_necesidad();
 
--- ----------------------------------------------------------------------------
--- TRIGGER 2: VALIDACIÓN DE FORMATO DE DNI Y SANITIZACIÓN DE CLIENTES
--- Valida que el DNI contenga exactamente 8 dígitos numéricos y normaliza
--- nombres, apellidos y correo a minúsculas sin espacios residuales.
--- ----------------------------------------------------------------------------
+
 
 CREATE OR REPLACE FUNCTION public.fn_validar_cliente()
 RETURNS TRIGGER
@@ -396,10 +390,7 @@ CREATE TRIGGER trg_validar_cliente
     FOR EACH ROW
     EXECUTE FUNCTION public.fn_validar_cliente();
 
--- ----------------------------------------------------------------------------
--- TRIGGER 3: VALIDACIÓN DE INTEGRIDAD EN PRODUCTO_CATALOGO
--- Valida que el modelo no esté vacío y que el precio no sea negativo.
--- ----------------------------------------------------------------------------
+
 
 CREATE OR REPLACE FUNCTION public.fn_validar_producto()
 RETURNS TRIGGER
