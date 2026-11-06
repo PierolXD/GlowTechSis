@@ -1,18 +1,3 @@
-# Guía de Ejecución: PostgreSQL Suite & Servidor Nativo Python
-
-Esta solución responde con rigor a los requerimientos solicitados para el esquema PostgreSQL:
-
-1. **Stored Procedures en PL/pgSQL:** Inserción, Modificación y Borrado (`sp_insertar_cliente`, `sp_modificar_cliente`, `sp_eliminar_cliente`, `sp_insertar_producto`, `sp_modificar_producto`, `sp_eliminar_producto`, `sp_insertar_perfil_necesidad`, etc.).
-2. **Triggers de Validación:**
-   - `trg_validar_perfil` (BEFORE INSERT/UPDATE ON perfil_de_necesidad): Validación de reglas de negocio (presupuesto > 0, fechas no futuras).
-   - `trg_validar_cliente` (BEFORE INSERT/UPDATE ON cliente): Validación estricta de formato DNI (8 dígitos numéricos) y sanitización de texto.
-   - `trg_validar_producto` (BEFORE INSERT/UPDATE ON producto_catalogo): Validación de código/modelo no vacíos y precios referenciales no negativos.
-3. **10 Consultas SQL para Reportes:** 8 con `JOINs` (catálogo, comparativa de precios, perfiles y asesores, matrices técnicas, recomendaciones con compatibilidad, ahorro financiero, etc.) y 2 analíticas directas.
-4. **`app.py`:** Servidor HTTP nativo en Python usando únicamente `http.server` y `psycopg2` (sin Flask, sin Express, sin frameworks).
-5. **`index.html`:** Interfaz web nativa con JavaScript puro (`fetch`) para enviar datos al servidor y mostrar los reportes en tablas dinámicas.
-
----
-
 ## Estructura de Archivos
 
 ```text
