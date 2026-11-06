@@ -273,7 +273,7 @@
     <!-- Header -->
     <header>
       <div>
-        <h1>Sistema PostgreSQL &bull; Asesoría Técnica</h1>
+        <h1>Glowtech</h1>
 
       </div>
       <div class="server-status">
@@ -288,8 +288,8 @@
     <!-- Pestañas de navegación -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('reportesTab')">10 Reportes SQL</button>
-      <button class="tab-btn" onclick="switchTab('clientesTab')">SPs Clientes (CRUD)</button>
-      <button class="tab-btn" onclick="switchTab('productosTab')">SPs Productos (CRUD)</button>
+      <button class="tab-btn" onclick="switchTab('clientesTab')">Clientes</button>
+      <button class="tab-btn" onclick="switchTab('productosTab')">Productos</button>
       <button class="tab-btn" onclick="switchTab('auditoriaTab')">Triggers de Validación</button>
     </div>
 
@@ -324,7 +324,7 @@
         </div>
 
         <p id="reportDesc" style="color: var(--text-muted); font-size: 0.875rem; margin-top: 8px;">
-          Muestra todos los productos vinculando su marca y categoría, ordenados por categoría y precio referencial.
+
         </p>
 
         <details style="margin-top: 12px; cursor: pointer;">
@@ -620,7 +620,7 @@ END IF;</div>
       const badge = document.getElementById("reportBadge");
 
       const descs = {
-        1: "Lista de todos los productos vinculando su marca y categoría (3 tablas con INNER JOIN).",
+        1: "",
         2: "Total de productos, precio promedio, mínimo y máximo por categoría (LEFT JOIN con agregaciones).",
         3: "Ficha completa de requerimientos del cliente con asesor y marca preferida (4 tablas con JOINs).",
         4: "Criterios técnicos de evaluación y resultados de candidatos analizados (4 tablas con JOINs).",
