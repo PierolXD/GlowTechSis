@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel PostgreSQL Nativo (Vanilla JS + Python http.server)</title>
+  <style>
+    /* Estilos nativos puros (Sin frameworks ni librerías externas) */
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #334155;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-top: 4px;
+    }
+
+    .server-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8125rem;
+      background: var(--surface);
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warning);
+    }
+    .status-dot.connected { background: var(--success); }
+    .status-dot.error { background: var(--danger); }
+
+    /* Navegación por pestañas */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 18px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Tarjetas y Paneles */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Formularios */
+    .grid-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    input, select, textarea {
+      background: #0b1322;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background-color 0.2s, opacity 0.2s;
+    }
+
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface-hover); color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { opacity: 0.9; }
+
+    /* Mensajes y Alertas */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .alert.success { background: rgba(16, 185, 129, 0.15); border: 1px solid var(--success); color: #34d399; }
+    .alert.error { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: #f87171; }
+
+    /* Tablas dinámicas */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-top: 16px;
+      background: #0b1322;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.8125rem;
+    }
+
+    th {
+      background: #1e293b;
+      padding: 12px 16px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      color: var(--text);
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .code-box {
+      background: #090e17;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.8125rem;
+      color: #93c5fd;
+      overflow-x: auto;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-join { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div>
+        <h1>Sistema PostgreSQL &bull; Asesoría Técnica</h1>
+
+      </div>
+      <div class="server-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Comprobando conexión con app.py...</span>
+      </div>
+    </header>
+
+    <!-- Alertas globales -->
+    <div id="globalAlert" class="alert"></div>
+
+    <!-- Pestañas de navegación -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('reportesTab')">10 Reportes SQL</button>
+      <button class="tab-btn" onclick="switchTab('clientesTab')">SPs Clientes (CRUD)</button>
+      <button class="tab-btn" onclick="switchTab('productosTab')">SPs Productos (CRUD)</button>
+      <button class="tab-btn" onclick="switchTab('auditoriaTab')">Triggers de Validación</button>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PESTAÑA 1: 10 REPORTES SQL                                            -->
+    <!-- ===================================================================== -->
+    <div id="reportesTab" class="tab-content active">
+      <div class="card">
+        <div class="card-title">
+          <span>Seleccionar y Ejecutar Reporte SQL</span>
+          <span class="badge badge-join" id="reportBadge">8 de 10 con JOINs</span>
+        </div>
+        <div class="grid-form" style="grid-template-columns: 1fr auto;">
+          <div class="form-group">
+            <label for="reportSelect">Reporte:</label>
+            <select id="reportSelect" onchange="onReportSelected()">
+              <option value="1">Reporte 1 (JOINs): Catálogo Completo con Marca y Categoría</option>
+              <option value="2">Reporte 2 (JOINs): Resumen de Precios por Categoría</option>
+              <option value="3">Reporte 3 (JOINs): Perfiles de Necesidad con Cliente y Asesor</option>
+              <option value="4">Reporte 4 (JOINs): Matriz Comparativa y Detalle de Evaluación</option>
+              <option value="5">Reporte 5 (JOINs): Recomendaciones Finales Técnicas</option>
+              <option value="6">Reporte 6 (JOINs): Desempeño y Carga de Asesores Técnicos</option>
+              <option value="7">Reporte 7 (JOINs): Comparativa Financiera: Presupuesto vs Precio</option>
+              <option value="8">Reporte 8 (JOINs): Variedad y Rango de Precios por Marca</option>
+              <option value="9">Reporte 9 (Directo): Top 15 Productos de Mayor Valor</option>
+              <option value="10">Reporte 10 (Directo): Distribución Porcentual por Canal de Contacto</option>
+            </select>
+          </div>
+          <div class="form-group" style="justify-content: flex-end;">
+            <button class="btn-primary" onclick="loadReport()">Ejecutar Consulta (fetch)</button>
+          </div>
+        </div>
+
+        <p id="reportDesc" style="color: var(--text-muted); font-size: 0.875rem; margin-top: 8px;">
+          Muestra todos los productos vinculando su marca y categoría, ordenados por categoría y precio referencial.
+        </p>
+
+        <details style="margin-top: 12px; cursor: pointer;">
+          <summary style="font-size: 0.8125rem; color: var(--primary);">Ver código SQL ejecutado</summary>
+          <div class="code-box" id="reportSql">Cargando consulta...</div>
+        </details>
+      </div>
+
+      <!-- Tabla de Resultados -->
+      <div class="card">
+        <div class="card-title">
+          <span>Resultados de la Consulta</span>
+          <span style="font-size: 0.8125rem; color: var(--text-muted);" id="rowCountLabel">0 registros</span>
+        </div>
+        <div class="table-container">
+          <table id="reportTable">
+            <thead>
+              <tr id="tableHead"><th>Presiona 'Ejecutar Consulta' para visualizar los datos</th></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PESTAÑA 2: STORED PROCEDURES CLIENTES (CRUD)                          -->
+    <!-- ===================================================================== -->
+    <div id="clientesTab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Gestión de Clientes (sp_insertar_cliente, sp_modificar_cliente, sp_eliminar_cliente)</div>
+        <div class="grid-form">
+          <div class="form-group">
+            <label for="cliDni">DNI (8 dígitos): *</label>
+            <input type="text" id="cliDni" maxlength="8" placeholder="Ej. 87654321">
+          </div>
+          <div class="form-group">
+            <label for="cliNombres">Nombres: *</label>
+            <input type="text" id="cliNombres" placeholder="Ej. Ana María">
+          </div>
+          <div class="form-group">
+            <label for="cliApellidos">Apellidos: *</label>
+            <input type="text" id="cliApellidos" placeholder="Ej. Quispe Flores">
+          </div>
+          <div class="form-group">
+            <label for="cliCanal">Canal de Contacto:</label>
+            <select id="cliCanal">
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Presencial">Presencial</option>
+              <option value="Teléfono">Teléfono</option>
+              <option value="Correo">Correo</option>
+              <option value="Web">Web</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cliTelefono">Teléfono:</label>
+            <input type="text" id="cliTelefono" placeholder="987654321">
+          </div>
+          <div class="form-group">
+            <label for="cliCorreo">Correo Electrónico:</label>
+            <input type="email" id="cliCorreo" placeholder="cliente@ejemplo.com">
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn-primary" onclick="spInsertarCliente()">Insertar Cliente (POST)</button>
+          <button class="btn-secondary" onclick="spModificarCliente()">Modificar Cliente (PUT)</button>
+          <button class="btn-danger" onclick="spEliminarCliente()">Eliminar Cliente (DELETE)</button>
+          <button class="btn-secondary" onclick="limpiarFormCliente()">Limpiar Formulario</button>
+          <button class="btn-secondary" onclick="listarClientes()">Refrescar Lista</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Clientes Registrados en la Base de Datos</div>
+        <div class="table-container">
+          <table id="clientesTable">
+            <thead>
+              <tr>
+                <th>DNI</th>
+                <th>Nombres</th>
+                <th>Apellidos</th>
+                <th>Canal</th>
+                <th>Teléfono</th>
+                <th>Correo</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="clientesBody">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PESTAÑA 3: STORED PROCEDURES PRODUCTOS (CRUD)                         -->
+    <!-- ===================================================================== -->
+    <div id="productosTab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Gestión de Catálogo (sp_insertar_producto, sp_modificar_producto, sp_eliminar_producto)</div>
+        <div class="grid-form">
+          <div class="form-group">
+            <label for="prodCodigo">Código Producto: *</label>
+            <input type="text" id="prodCodigo" placeholder="Ej. PROD0250">
+          </div>
+          <div class="form-group">
+            <label for="prodModelo">Modelo / Nombre: *</label>
+            <input type="text" id="prodModelo" placeholder="Ej. JBL Live Pro 3 TWS">
+          </div>
+          <div class="form-group">
+            <label for="prodPrecio">Precio Referencial (S/.): *</label>
+            <input type="number" step="0.01" id="prodPrecio" placeholder="499.00">
+          </div>
+          <div class="form-group">
+            <label for="prodMarca">ID Marca: *</label>
+            <input type="number" id="prodMarca" placeholder="1 (JBL)">
+          </div>
+          <div class="form-group">
+            <label for="prodCat">ID Categoría: *</label>
+            <input type="number" id="prodCat" placeholder="1 (AUDIFONOS)">
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="prodSpecs">Especificaciones Técnicas:</label>
+            <input type="text" id="prodSpecs" placeholder="Color: NEGRO, Cancelación Activa de Ruido">
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn-primary" onclick="spInsertarProducto()">Insertar Producto (POST)</button>
+          <button class="btn-secondary" onclick="spModificarProducto()">Modificar Producto (PUT)</button>
+          <button class="btn-danger" onclick="spEliminarProducto()">Eliminar Producto (DELETE)</button>
+          <button class="btn-secondary" onclick="limpiarFormProducto()">Limpiar</button>
+          <button class="btn-secondary" onclick="listarProductos()">Refrescar Catálogo</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Productos en Catálogo</div>
+        <div class="table-container">
+          <table id="productosTable">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Modelo</th>
+                <th>Marca</th>
+                <th>Categoría</th>
+                <th>Precio Ref.</th>
+                <th>Especificaciones</th>
+              </tr>
+            </thead>
+            <tbody id="productosBody">
+              <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Cargando catálogo...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PESTAÑA 4: TRIGGERS DE VALIDACIÓN                                     -->
+    <!-- ===================================================================== -->
+    <div id="auditoriaTab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Triggers de Validación de Reglas de Negocio en PostgreSQL</div>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 16px;">
+          1. <strong>trg_validar_perfil (BEFORE INSERT OR UPDATE ON perfil_de_necesidad):</strong> Valida que el presupuesto máximo sea estrictamente mayor a 0 y que la fecha de registro no sea en el futuro. Lanza una excepción PL/pgSQL si se viola la regla.<br><br>
+          2. <strong>trg_validar_cliente (BEFORE INSERT OR UPDATE ON cliente):</strong> Valida que el DNI contenga exactamente 8 dígitos numéricos mediante la expresión regular <code>^[0-9]{8}$</code> y normaliza los nombres y correos.<br><br>
+          3. <strong>trg_validar_producto (BEFORE INSERT OR UPDATE ON producto_catalogo):</strong> Valida que el código y modelo no estén vacíos y que el precio referencial no sea negativo.
+        </p>
+        <div class="code-box">-- Ejemplo de regla del Trigger 1
+IF NEW.presupuesto_max IS NULL OR NEW.presupuesto_max &lt;= 0 THEN
+    RAISE EXCEPTION 'Regla de negocio infringida: El presupuesto debe ser mayor a 0 (recibido: %)', NEW.presupuesto_max;
+END IF;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT NATIVO (Zero frameworks, pure native fetch)                 -->
+  <!-- ======================================================================= -->
+  <script>
+    // Configuración base de la API (detecta host actual o apunta a localhost:8000)
+    const API_BASE = window.location.port === "8000" ? "" : "http://localhost:8000";
+
+    // Función para cambiar de pestaña
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+      
+      const targetBtn = Array.from(document.querySelectorAll(".tab-btn")).find(b => b.getAttribute("onclick").includes(tabId));
+      if (targetBtn) targetBtn.classList.add("active");
+      
+      const targetContent = document.getElementById(tabId);
+      if (targetContent) targetContent.classList.add("active");
+
+      // Cargas automáticas al entrar
+      if (tabId === "clientesTab") listarClientes();
+      if (tabId === "productosTab") listarProductos();
+    }
+
+    // Muestra alerta
+    function showAlert(msg, isError = false) {
+      const box = document.getElementById("globalAlert");
+      box.className = "alert " + (isError ? "error" : "success");
+      box.textContent = msg;
+      box.style.display = "block";
+      setTimeout(() => { box.style.display = "none"; }, 6000);
+    }
+
+    // Comprobación de salud del servidor
+    async function checkHealth() {
+      const dot = document.getElementById("statusDot");
+      const text = document.getElementById("statusText");
+      try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        if (res.ok) {
+          const data = await res.json();
+          dot.className = "status-dot connected";
+          text.textContent = "Servidor app.py conectado";
+        } else {
+          dot.className = "status-dot error";
+          text.textContent = "Servidor respondió con error HTTP " + res.status;
+        }
+      } catch (err) {
+        dot.className = "status-dot error";
+        text.textContent = "Sin conexión con app.py (Inicia 'python app.py' en puerto 8000)";
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // REPORTE SQL (Carga y render dinámico de tablas)
+    // -------------------------------------------------------------------------
+    async function loadReport() {
+      const select = document.getElementById("reportSelect");
+      const id = select.value;
+      const countLabel = document.getElementById("rowCountLabel");
+      const thead = document.getElementById("tableHead");
+      const tbody = document.getElementById("tableBody");
+      const sqlBox = document.getElementById("reportSql");
+
+      countLabel.textContent = "Consultando...";
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted);">Ejecutando consulta en PostgreSQL...</td></tr>`;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/reports?id=${id}`);
+        const data = await res.json();
+
+        if (!data.success) {
+          showAlert(data.error || "Error al ejecutar reporte", true);
+          tbody.innerHTML = `<tr><td colspan="10" style="color: var(--danger); text-align: center;">${data.error}</td></tr>`;
+          return;
+        }
+
+        sqlBox.textContent = data.sql_used;
+        countLabel.textContent = `${data.total_rows} filas recuperadas`;
+
+        // Render columnas
+        thead.innerHTML = "";
+        data.columns.forEach(col => {
+          const th = document.createElement("th");
+          th.textContent = col.replace(/_/g, " ");
+          thead.appendChild(th);
+        });
+
+        // Render filas
+        tbody.innerHTML = "";
+        if (data.rows.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="${data.columns.length}" style="text-align: center;">Sin registros coincidentes.</td></tr>`;
+        } else {
+          data.rows.forEach(row => {
+            const tr = document.createElement("tr");
+            data.columns.forEach(col => {
+              const td = document.createElement("td");
+              const val = row[col];
+              td.textContent = (val === null || val === undefined) ? "-" : val;
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        showAlert("Error de red conectando al servidor: " + err.message, true);
+        tbody.innerHTML = `<tr><td colspan="10" style="color: var(--danger); text-align: center;">No se pudo conectar a ${API_BASE}/api/reports</td></tr>`;
+      }
+    }
+
+    function onReportSelected() {
+      const select = document.getElementById("reportSelect");
+      const id = parseInt(select.value, 10);
+      const descBox = document.getElementById("reportDesc");
+      const badge = document.getElementById("reportBadge");
+
+      const descs = {
+        1: "Lista de todos los productos vinculando su marca y categoría (3 tablas con INNER JOIN).",
+        2: "Total de productos, precio promedio, mínimo y máximo por categoría (LEFT JOIN con agregaciones).",
+        3: "Ficha completa de requerimientos del cliente con asesor y marca preferida (4 tablas con JOINs).",
+        4: "Criterios técnicos de evaluación y resultados de candidatos analizados (4 tablas con JOINs).",
+        5: "Productos finales recomendados al cliente con porcentaje de afinidad y sugerencias de uso (JOIN).",
+        6: "Cantidad de perfiles asignados por asesor y presupuesto promedio gestionado (JOIN con agrupaciones).",
+        7: "Cálculo del ahorro o saldo a favor del cliente contra la cotización del producto (5 tablas con JOINs).",
+        8: "Marcas con mayor variedad de productos en el catálogo y espectro de precios (JOIN con agregaciones).",
+        9: "Consulta analítica directa de los productos más exclusivos y de mayor valor comercial.",
+        10: "Consulta analítica directa agrupando medios de comunicación preferidos con porcentajes calculados."
+      };
+
+      descBox.textContent = descs[id] || "";
+      badge.textContent = id <= 8 ? "Consulta con JOINs" : "Consulta Agregada / Directa";
+      badge.className = id <= 8 ? "badge badge-join" : "badge";
+      loadReport();
+    }
+
+    // -------------------------------------------------------------------------
+    // STORED PROCEDURES CLIENTES
+    // -------------------------------------------------------------------------
+    async function spInsertarCliente() {
+      const payload = {
+        dni: document.getElementById("cliDni").value,
+        nombres: document.getElementById("cliNombres").value,
+        apellidos: document.getElementById("cliApellidos").value,
+        canal_contacto: document.getElementById("cliCanal").value,
+        telefono: document.getElementById("cliTelefono").value,
+        correo: document.getElementById("cliCorreo").value
+      };
+
+      if (!payload.dni || !payload.nombres || !payload.apellidos) {
+        showAlert("DNI, Nombres y Apellidos son obligatorios.", true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/sp/insert_cliente`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showAlert(data.message);
+          limpiarFormCliente();
+          listarClientes();
+        } else {
+          showAlert(data.error, true);
+        }
+      } catch (err) {
+        showAlert("Error de red: " + err.message, true);
+      }
+    }
+
+    async function spModificarCliente() {
+      const payload = {
+        dni: document.getElementById("cliDni").value,
+        nombres: document.getElementById("cliNombres").value,
+        apellidos: document.getElementById("cliApellidos").value,
+        canal_contacto: document.getElementById("cliCanal").value,
+        telefono: document.getElementById("cliTelefono").value,
+        correo: document.getElementById("cliCorreo").value
+      };
+
+      if (!payload.dni) {
+        showAlert("Debes indicar el DNI del cliente a modificar.", true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/sp/update_cliente`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showAlert(data.message);
+          listarClientes();
+        } else {
+          showAlert(data.error, true);
+        }
+      } catch (err) {
+        showAlert("Error de red: " + err.message, true);
+      }
+    }
+
+    async function spEliminarCliente() {
+      const dni = document.getElementById("cliDni").value;
+      if (!dni) {
+        showAlert("Debes indicar el DNI del cliente a eliminar.", true);
+        return;
+      }
+
+      if (!confirm(`¿Confirmas eliminar al cliente con DNI ${dni}?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/sp/delete_cliente?dni=${encodeURIComponent(dni)}`, {
+          method: "DELETE"
+        });
+        const data = await res.json();
+        if (data.success) {
+          showAlert(data.message);
+          limpiarFormCliente();
+          listarClientes();
+        } else {
+          showAlert(data.error, true);
+        }
+      } catch (err) {
+        showAlert("Error de red: " + err.message, true);
+      }
+    }
+
+    async function listarClientes() {
+      const tbody = document.getElementById("clientesBody");
+      try {
+        const res = await fetch(`${API_BASE}/api/data/clientes`);
+        const data = await res.json();
+        if (data.clientes) {
+          tbody.innerHTML = "";
+          data.clientes.forEach(c => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><strong>${c.dni_cliente}</strong></td>
+              <td>${c.nombres}</td>
+              <td>${c.apellidos}</td>
+              <td>${c.canal_contacto || "-"}</td>
+              <td>${c.telefono || "-"}</td>
+              <td>${c.correo || "-"}</td>
+              <td>
+                <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick='cargarFormCliente(${JSON.stringify(c)})'>Editar</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color: var(--danger); text-align: center;">Error al cargar clientes. Verifica app.py.</td></tr>`;
+      }
+    }
+
+    function cargarFormCliente(c) {
+      document.getElementById("cliDni").value = c.dni_cliente;
+      document.getElementById("cliNombres").value = c.nombres;
+      document.getElementById("cliApellidos").value = c.apellidos;
+      document.getElementById("cliCanal").value = c.canal_contacto || "WhatsApp";
+      document.getElementById("cliTelefono").value = c.telefono || "";
+      document.getElementById("cliCorreo").value = c.correo || "";
+    }
+
+    function limpiarFormCliente() {
+      document.getElementById("cliDni").value = "";
+      document.getElementById("cliNombres").value = "";
+      document.getElementById("cliApellidos").value = "";
+      document.getElementById("cliTelefono").value = "";
+      document.getElementById("cliCorreo").value = "";
+    }
+
+    // -------------------------------------------------------------------------
+    // STORED PROCEDURES PRODUCTOS
+    // -------------------------------------------------------------------------
+    async function spInsertarProducto() {
+      const payload = {
+        codigo: document.getElementById("prodCodigo").value,
+        modelo: document.getElementById("prodModelo").value,
+        especificaciones: document.getElementById("prodSpecs").value,
+        precio: parseFloat(document.getElementById("prodPrecio").value) || 0,
+        id_marca: parseInt(document.getElementById("prodMarca").value, 10),
+        id_categoria: parseInt(document.getElementById("prodCat").value, 10)
+      };
+
+      if (!payload.codigo || !payload.modelo || !payload.id_marca || !payload.id_categoria) {
+        showAlert("Código, Modelo, Marca y Categoría son campos obligatorios.", true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/sp/insert_producto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showAlert(data.message);
+          limpiarFormProducto();
+          listarProductos();
+        } else {
+          showAlert(data.error, true);
+        }
+      } catch (err) {
+        showAlert("Error de red: " + err.message, true);
+      }
+    }
+
+    async function spModificarProducto() {
+      const payload = {
+        codigo: document.getElementById("prodCodigo").value,
+        modelo: document.getElementById("prodModelo").value,
+        especificaciones: document.getElementById("prodSpecs").value,
+        precio: parseFloat(document.getElementById("prodPrecio").value) || 0,
+        id_marca: parseInt(document.getElementById("prodMarca").value, 10),
+        id_categoria: parseInt(document.getElementById("prodCat").value, 10)
+      };
+
+      if (!payload.codigo) {
+        showAlert("Indica el código del producto a modificar.", true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/sp/update_producto`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showAlert(data.message);
+          listarProductos();
+        } else {
+          showAlert(data.error, true);
+        }
+      } catch (err) {
+        showAlert("Error de red: " + err.message, true);
+      }
+    }
+
+    async function spEliminarProducto() {
+      const codigo = document.getElementById("prodCodigo").value;
+      if (!codigo) {
+        showAlert("Indica el código del producto a eliminar.", true);
+        return;
+      }
+
+      if (!confirm(`¿Eliminar el producto ${codigo}?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/sp/delete_producto?codigo=${encodeURIComponent(codigo)}`, {
+          method: "DELETE"
+        });
+        const data = await res.json();
+        if (data.success) {
+          showAlert(data.message);
+          limpiarFormProducto();
+          listarProductos();
+        } else {
+          showAlert(data.error, true);
+        }
+      } catch (err) {
+        showAlert("Error de red: " + err.message, true);
+      }
+    }
+
+    async function listarProductos() {
+      const tbody = document.getElementById("productosBody");
+      try {
+        const res = await fetch(`${API_BASE}/api/data/productos`);
+        const data = await res.json();
+        if (data.productos) {
+          tbody.innerHTML = "";
+          data.productos.slice(0, 50).forEach(p => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><code>${p.codigo_producto}</code></td>
+              <td>${p.modelo}</td>
+              <td>${p.nombre_marca || p.id_marca}</td>
+              <td>${p.nombre_categoria || p.id_categoria}</td>
+              <td>S/. ${parseFloat(p.precio_referencial).toFixed(2)}</td>
+              <td>${p.especificaciones || "-"}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color: var(--danger); text-align: center;">Error al cargar catálogo.</td></tr>`;
+      }
+    }
+
+    function limpiarFormProducto() {
+      document.getElementById("prodCodigo").value = "";
+      document.getElementById("prodModelo").value = "";
+      document.getElementById("prodSpecs").value = "";
+      document.getElementById("prodPrecio").value = "";
+      document.getElementById("prodMarca").value = "";
+      document.getElementById("prodCat").value = "";
+    }
+
+    // Inicio automático
+    window.addEventListener("DOMContentLoaded", () => {
+      checkHealth();
+      loadReport();
+    });
+  </script>
+</body>
+</html>

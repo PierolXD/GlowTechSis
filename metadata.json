@@ -1,0 +1,6 @@
+{
+  "name": "PostgreSQL Suite & Native Python Hub",
+  "description": "Solución integral para PostgreSQL: Stored Procedures en PL/pgSQL, Triggers de auditoría/validación, 10 consultas de reportes con JOINs, servidor nativo app.py (http.server + psycopg2) e interfaz vanilla index.html.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
