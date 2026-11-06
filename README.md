@@ -54,6 +54,4 @@
    ```text
    http://localhost:8000
    ```
-   (O simplemente abre `public/index_standalone.html` con doble clic).
 
-2. Selecciona cualquiera de los 10 reportes para consultar los datos mediante `fetch()` y visualizarlos en tablas dinámicas.
