@@ -1,7 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
 title sistema - PSJ (Localhost)
-chcp 65001 >nul
 
 cd /d "%~dp0"
 
@@ -28,7 +27,7 @@ REM ==================================================================
 ".venv\Scripts\python.exe" --version >nul 2>&1
 if errorlevel 1 (
     if exist ".venv" (
-        echo [INFO] Entorno virtual .venv incompatible o dañado. Reconstruyendo...
+        echo [INFO] Entorno virtual .venv incompatible o danado. Reconstruyendo...
         rmdir /s /q ".venv"
     ) else (
         echo [INFO] Configurando el sistema por primera vez...
@@ -94,9 +93,9 @@ if exist "database\verificar_y_migrar_bd.py" (
 
     if "!DB_ERR!"=="2" (
         echo.
-        echo [AVISO] La contraseña configurada para el usuario '!PGUSER!' no funciono.
+        echo [AVISO] La contrasena configurada para el usuario '!PGUSER!' no funciono.
         set "NEW_PASS="
-        set /p "NEW_PASS=Ingresa tu contraseña de PostgreSQL para '!PGUSER!' (o Enter para omitir): "
+        set /p "NEW_PASS=Ingresa tu contrasena de PostgreSQL para '!PGUSER!' (o Enter para omitir): "
         if defined NEW_PASS (
             set "PGPASSWORD=!NEW_PASS!"
             (
