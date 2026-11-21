@@ -552,6 +552,44 @@ def json_serial(obj):
     raise TypeError(f"Tipo no serializable: {type(obj)}")
 
 
+def _format_db_error(ex):
+    """Convierte errores de PostgreSQL / psycopg2 a texto legible evitando fallos de codificación UTF-8 en Windows."""
+    if isinstance(ex, UnicodeDecodeError) and isinstance(getattr(ex, "object", None), (bytes, bytearray)):
+        msg = ex.object.decode("cp1252", errors="replace")
+    else:
+        try:
+            msg = str(ex)
+        except Exception:
+            try:
+                msg = repr(ex)
+            except Exception:
+                msg = "Error de conexión con PostgreSQL."
+
+    lower_msg = msg.lower()
+    if any(
+        k in lower_msg
+        for k in (
+            "autenticaci",
+            "autentificaci",
+            "password authentication failed",
+            "contraseña",
+            "password",
+            "no existe el rol",
+            "pg_hba.conf",
+            "0xf3",
+        )
+    ) or ("role " in lower_msg and "does not exist" in lower_msg):
+        return "Contraseña incorrecta de PostgreSQL o usuario no autorizado (revisa PGPASSWORD en .env)."
+    if ("database" in lower_msg and "does not exist" in lower_msg) or "no existe la base de datos" in lower_msg:
+        return "La base de datos 'db_asesoria' no existe. Ejecuta: database\\verificar_y_migrar_bd.py"
+    if "fatal:" not in lower_msg and any(
+        k in lower_msg
+        for k in ("connection to server", "could not connect", "conexión", "refused", "no se pudo establecer", "no se puede conectar")
+    ):
+        return f"No se pudo conectar a PostgreSQL en {DB_CONFIG['host']}:{DB_CONFIG['port']}. ¿El servicio de PostgreSQL está iniciado?"
+    return msg
+
+
 def get_db_connection():
     if not psycopg2:
         raise ConnectionError(
@@ -787,7 +825,7 @@ class NativePostgresServer(BaseHTTPRequestHandler):
                     "triggers": trgs_count,
                 }
             except Exception as ex:
-                error_msg = str(ex)
+                error_msg = _format_db_error(ex)
         else:
             error_msg = "psycopg2 no instalado en Python"
 
@@ -866,7 +904,7 @@ class NativePostgresServer(BaseHTTPRequestHandler):
                 },
             )
         except Exception as e:
-            return self._send_json(500, {"success": False, "error": str(e)})
+            return self._send_json(500, {"success": False, "error": _format_db_error(e)})
 
     def _handle_report(self, query):
         try:
@@ -1013,7 +1051,7 @@ class NativePostgresServer(BaseHTTPRequestHandler):
                 },
             )
         except Exception as e:
-            return self._send_json(500, {"success": False, "error": str(e)})
+            return self._send_json(500, {"success": False, "error": _format_db_error(e)})
 
     # -------------------------------------------------------------------------
     # RUTAS POST (Inserción mediante Stored Procedures)
