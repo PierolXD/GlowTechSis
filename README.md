@@ -1,74 +1,78 @@
-# Guía de Ejecución: PostgreSQL Suite & Servidor Nativo Python
+# GlowTechSis — Sistema de Asesoramiento Técnico (PostgreSQL + Python Nativo)
 
-Esta solución responde con rigor a los requerimientos solicitados para el esquema PostgreSQL:
+Sistema de base de datos y aplicativo web para el proceso consultivo de **Atención y Asesoramiento Técnico** de **Glowtech** (UCSM — Ingeniería de Sistemas).
 
-1. **Stored Procedures en PL/pgSQL:** Inserción, Modificación y Borrado (`sp_insertar_cliente`, `sp_modificar_cliente`, `sp_eliminar_cliente`, `sp_insertar_producto`, `sp_modificar_producto`, `sp_eliminar_producto`, `sp_insertar_perfil_necesidad`, etc.).
-2. **Triggers de Validación:**
-   - `trg_validar_perfil` (BEFORE INSERT/UPDATE ON perfil_de_necesidad): Validación de reglas de negocio (presupuesto > 0, fechas no futuras).
-   - `trg_validar_cliente` (BEFORE INSERT/UPDATE ON cliente): Validación estricta de formato DNI (8 dígitos numéricos) y sanitización de texto.
-   - `trg_validar_producto` (BEFORE INSERT/UPDATE ON producto_catalogo): Validación de código/modelo no vacíos y precios referenciales no negativos.
-3. **10 Consultas SQL para Reportes:** 8 con `JOINs` (catálogo, comparativa de precios, perfiles y asesores, matrices técnicas, recomendaciones con compatibilidad, ahorro financiero, etc.) y 2 analíticas directas.
-4. **`app.py`:** Servidor HTTP nativo en Python usando únicamente `http.server` y `psycopg2` (sin Flask, sin Express, sin frameworks).
-5. **`index.html`:** Interfaz web nativa con JavaScript puro (`fetch`) para enviar datos al servidor y mostrar los reportes en tablas dinámicas.
+- **Base de datos:** PostgreSQL 14+ (`db_asesoria`) — 9 tablas en 3FN, 9 índices, **27 Stored Procedures PL/pgSQL**, **5 Triggers de validación** y catálogo de 211 productos (15 categorías, 26 marcas).
+- **Backend:** Python 3 nativo (`python_backend/app.py` con `http.server` y `psycopg2`, cero frameworks).
+- **Frontend:** HTML5 / CSS3 / JavaScript Vanilla (`python_backend/index.html` con `fetch()`).
+- **Simulador opcional:** Separado y optimizado en `simulador_react/` (React en memoria, no requerido para el sistema real).
 
 ---
 
-## Estructura de Archivos
+## Estructura del Proyecto
 
 ```text
 ├── database/
-│   ├── solucion_postgresql.sql    # Stored Procedures y Triggers de Validación
-│   └── reportes.sql               # Las 10 consultas SQL para reportes
+│   ├── script_completo_glowtech.sql   # Script maestro todo-en-uno (psql y pgAdmin 4)
+│   ├── solucion_postgresql.sql        # Índices, 27 Stored Procedures y 5 Triggers
+│   ├── reportes.sql                   # 10 Consultas de INIFORMACION.docx + 10 Reportes Gerenciales
+│   ├── schema_original.sql            # Dump original pg_dump de referencia
+│   └── verificar_y_migrar_bd.py       # Crea/actualiza db_asesoria automáticamente
 ├── python_backend/
-│   ├── app.py                     # Servidor nativo con http.server y psycopg2
-│   └── index.html                 # Frontend nativo para despliegue junto al servidor
+│   ├── app.py                         # Servidor nativo Python (http.server + psycopg2)
+│   └── index.html                     # Panel web completo (Asesoría 3 etapas, CRUD 9 tablas, 20 consultas)
 ├── public/
-│   └── index_standalone.html      # Copia independiente para doble clic o host estático
-└── README.md                      # Esta documentación
+│   └── index_standalone.html          # Copia sincronizada de index.html
+├── tests/
+│   └── test_sistema.py                # Pruebas automatizadas end-to-end
+├── docs/
+│   ├── MEMORIA_TECNICA.md             # Memoria técnica del proyecto
+│   └── DOCUMENTACION_SCRIPTS_Y_CODIGOS.md  # Documentación de scripts, códigos y verificación de manuales
+├── simulador_react/                   # Simulador React opcional (separado)
+├── .env.example                       # Variables de conexión a PostgreSQL
+└── iniciar_ui.ps1                     # Script de arranque en Windows
 ```
 
 ---
 
-## Paso 1: Configurar la Base de Datos PostgreSQL
+## Instalación y Puesta en Marcha
 
-1. Abre tu terminal o pgAdmin y conéctate a tu PostgreSQL:
-   ```bash
-   psql -U postgres -d postgres
-   ```
+### 1. Crear y cargar la Base de Datos (`db_asesoria`)
 
-2. Carga los Stored Procedures y Triggers de validación:
-   ```bash
-   psql -U postgres -d postgres -f database/solucion_postgresql.sql
-   ```
+Opción recomendada (con `psql` o pgAdmin 4 Query Tool):
+```powershell
+psql -U postgres -c "CREATE DATABASE db_asesoria;"
+psql -U postgres -d db_asesoria -f database/script_completo_glowtech.sql
+```
 
-3. Puedes probar las 10 consultas directamente en psql:
-   ```bash
-   psql -U postgres -d postgres -f database/reportes.sql
-   ```
+O automáticamente con Python (crea `db_asesoria` si no existe y aplica el script maestro):
+```powershell
+$env:PGPASSWORD = "tu_contraseña"
+.\.venv\Scripts\python.exe database\verificar_y_migrar_bd.py
+```
+
+### 2. Preparar entorno Python (si no existe `.venv`)
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install psycopg2-binary
+```
+
+### 3. Iniciar el Sistema
+```powershell
+$env:PGPASSWORD = "tu_contraseña"
+.\iniciar_ui.ps1
+```
+Abre en tu navegador: **http://localhost:8000**
+
+### 4. Ejecutar Pruebas Automatizadas (CRUD 9 tablas, 27 SPs, 5 Triggers y 20 Consultas)
+```powershell
+$env:PGPASSWORD = "tu_contraseña"
+.\.venv\Scripts\python.exe tests\test_sistema.py
+```
 
 ---
 
-## Paso 2: Iniciar el Servidor Nativo Python (`app.py`)
-
-1. Asegúrate de tener Python 3 y `psycopg2` instalado:
-   ```bash
-   pip install psycopg2-binary
-   ```
-
-2. Ejecuta el servidor nativo:
-   ```bash
-   cd python_backend
-   python app.py
-   ```
-
----
-
-## Paso 3: Usar la Aplicación Web (`index.html`)
-
-1. Abre en tu navegador favorito:
-   ```text
-   http://localhost:8000
-   ```
-   (O simplemente abre `public/index_standalone.html` con doble clic).
-
-2. Selecciona cualquiera de los 10 reportes para consultar los datos mediante `fetch()` y visualizarlos en tablas dinámicas.
+## Documentación Entregable
+- **Memoria Técnica:** `docs/MEMORIA_TECNICA.md`
+- **Documentación de Scripts, Códigos y Verificación del Manual:** `docs/DOCUMENTACION_SCRIPTS_Y_CODIGOS.md`
+- **Manuales de Usuario:** `Manual_Completo_GlowTechSis.pdf` y `Guia_Rapida_GlowTechSis.pdf` (en la carpeta raíz del proyecto)

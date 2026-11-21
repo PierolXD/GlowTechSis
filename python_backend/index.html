@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel PostgreSQL Nativo (Vanilla JS + Python http.server)</title>
+  <title>sistema - PSJ</title>
   <style>
-    /* Estilos nativos puros (Sin frameworks ni librerías externas) */
     :root {
       --bg: #0f172a;
       --surface: #1e293b;
+      --surface-alt: #0b1322;
       --surface-hover: #334155;
       --border: #334155;
       --text: #f8fafc;
@@ -20,749 +20,1042 @@
       --warning: #f59e0b;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-      padding: 24px;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); line-height: 1.5; padding: 20px; }
+    .container { max-width: 1320px; margin: 0 auto; }
 
     header {
       border-bottom: 1px solid var(--border);
-      padding-bottom: 16px;
-      margin-bottom: 24px;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 16px;
+      gap: 12px;
     }
+    h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.02em; }
+    .subtitle { color: var(--text-muted); font-size: 0.82rem; margin-top: 2px; }
 
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .subtitle {
-      color: var(--text-muted);
-      font-size: 0.875rem;
-      margin-top: 4px;
-    }
-
+    .status-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .server-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8125rem;
-      background: var(--surface);
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; font-size: 0.8rem;
+      background: var(--surface); padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border);
     }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--warning);
-    }
+    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warning); flex-shrink: 0; }
     .status-dot.connected { background: var(--success); }
     .status-dot.error { background: var(--danger); }
 
-    /* Navegación por pestañas */
     .tabs {
-      display: flex;
-      gap: 8px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 24px;
-      overflow-x: auto;
+      display: flex; gap: 6px; border-bottom: 1px solid var(--border);
+      margin-bottom: 20px; overflow-x: auto;
     }
-
     .tab-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      padding: 10px 18px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s;
-      white-space: nowrap;
+      background: none; border: none; color: var(--text-muted);
+      padding: 10px 16px; font-size: 0.86rem; font-weight: 600;
+      cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
     }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
-    .tab-btn:hover {
-      color: var(--text);
+    .subtabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .subtab-btn {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+      padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
     }
+    .subtab-btn:hover { color: var(--text); border-color: var(--primary); }
+    .subtab-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .subtab-panel { display: none; }
+    .subtab-panel.active { display: block; }
 
-    .tab-btn.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    /* Tarjetas y Paneles */
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px;
-      margin-bottom: 24px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px; margin-bottom: 18px;
     }
-
     .card-title {
-      font-size: 1.125rem;
-      font-weight: 600;
-      margin-bottom: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      font-size: 1.02rem; font-weight: 600; margin-bottom: 14px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
     }
 
-    /* Formularios */
     .grid-form {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 16px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px; margin-bottom: 14px;
     }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    label {
-      font-size: 0.8125rem;
-      font-weight: 500;
-      color: var(--text-muted);
-    }
-
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: 0.78rem; font-weight: 500; color: var(--text-muted); }
     input, select, textarea {
-      background: #0b1322;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      outline: none;
-      transition: border-color 0.2s;
+      background: var(--surface-alt); border: 1px solid var(--border); color: var(--text);
+      padding: 8px 10px; border-radius: 6px; font-size: 0.84rem; outline: none;
     }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+    textarea { min-height: 62px; resize: vertical; }
 
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--primary);
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
     button {
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: background-color 0.2s, opacity 0.2s;
+      padding: 8px 14px; border-radius: 6px; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent; transition: opacity 0.15s, background-color 0.15s;
     }
-
+    .btn-sm { padding: 4px 9px; font-size: 0.74rem; }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #052e16; }
     .btn-secondary { background: var(--surface-hover); color: var(--text); border-color: var(--border); }
     .btn-secondary:hover { background: #475569; }
     .btn-danger { background: var(--danger); color: #fff; }
-    .btn-danger:hover { opacity: 0.9; }
+    .btn-warning { background: var(--warning); color: #1c1917; }
 
-    /* Mensajes y Alertas */
     .alert {
-      padding: 12px 16px;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      margin-bottom: 16px;
-      display: none;
+      padding: 11px 14px; border-radius: 6px; font-size: 0.84rem;
+      margin-bottom: 14px; display: none; white-space: pre-wrap;
     }
     .alert.success { background: rgba(16, 185, 129, 0.15); border: 1px solid var(--success); color: #34d399; }
     .alert.error { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: #f87171; }
 
-    /* Tablas dinámicas */
     .table-container {
-      overflow-x: auto;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      margin-top: 16px;
-      background: #0b1322;
+      overflow-x: auto; border-radius: 8px; border: 1px solid var(--border);
+      margin-top: 10px; background: var(--surface-alt); max-height: 460px; overflow-y: auto;
     }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.8125rem;
-    }
-
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem; }
     th {
-      background: #1e293b;
-      padding: 12px 16px;
-      font-weight: 600;
-      border-bottom: 1px solid var(--border);
-      color: var(--text-muted);
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.05em;
+      background: #1e293b; padding: 10px 12px; font-weight: 600; border-bottom: 1px solid var(--border);
+      color: var(--text-muted); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.04em;
+      position: sticky; top: 0;
     }
-
-    td {
-      padding: 10px 16px;
-      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
-      color: var(--text);
-    }
-
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
-    }
+    td { padding: 9px 12px; border-bottom: 1px solid rgba(51, 65, 85, 0.5); color: var(--text); vertical-align: top; }
+    tr:hover td { background: rgba(255, 255, 255, 0.03); }
 
     .code-box {
-      background: #090e17;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px;
-      font-family: monospace;
-      font-size: 0.8125rem;
-      color: #93c5fd;
-      overflow-x: auto;
-      margin-top: 10px;
-      white-space: pre-wrap;
+      background: #090e17; border: 1px solid var(--border); border-radius: 6px;
+      padding: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem; color: #93c5fd; overflow-x: auto; margin-top: 8px; white-space: pre-wrap;
     }
-
     .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 0.72rem; font-weight: 600; background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);
     }
-    .badge-join { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .badge-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .kpi { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .kpi-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; }
+    .kpi-value { font-size: 1.25rem; font-weight: 700; margin-top: 4px; }
+    .step-badge {
+      display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+      border-radius: 50%; background: var(--primary); color: #fff; font-size: 0.75rem; font-weight: 700; margin-right: 6px;
+    }
+    .muted { color: var(--text-muted); font-size: 0.82rem; }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
     <header>
       <div>
-        <h1>Glowtech</h1>
-
+        <h1>sistema - PSJ</h1>
       </div>
-      <div class="server-status">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="statusText">Comprobando conexión con app.py...</span>
+      <div class="status-bar">
+        <div class="server-status">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Comprobando conexión...</span>
+        </div>
+        <button class="btn-secondary btn-sm" onclick="probarConexionBD()">Probar Conexión BD</button>
       </div>
     </header>
 
-    <!-- Alertas globales -->
     <div id="globalAlert" class="alert"></div>
 
-    <!-- Pestañas de navegación -->
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('reportesTab')">10 Reportes SQL</button>
-      <button class="tab-btn" onclick="switchTab('clientesTab')">Clientes</button>
-      <button class="tab-btn" onclick="switchTab('productosTab')">Productos</button>
-      <button class="tab-btn" onclick="switchTab('auditoriaTab')">Triggers de Validación</button>
+    <!-- Diagnóstico de Conexión (oculto hasta que se pulsa Probar Conexión BD o si hay error) -->
+    <div id="diagPanel" class="card" style="display:none;">
+      <div class="card-title">
+        <span>Diagnóstico de Conexión e Integridad PostgreSQL</span>
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('diagPanel').style.display='none'">Cerrar</button>
+      </div>
+      <div id="diagContent" class="muted">Ejecutando prueba...</div>
     </div>
 
-    <!-- ===================================================================== -->
-    <!-- PESTAÑA 1: 10 REPORTES SQL                                            -->
-    <!-- ===================================================================== -->
-    <div id="reportesTab" class="tab-content active">
+    <!-- Pestañas Principales -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('asesoriaTab', this)">Flujo de Asesoría (3 Etapas)</button>
+      <button class="tab-btn" onclick="switchTab('docQueriesTab', this)">10 Consultas del Documento</button>
+      <button class="tab-btn" onclick="switchTab('reportesTab', this)">10 Reportes Gerenciales</button>
+      <button class="tab-btn" onclick="switchTab('crudTab', this)">Gestión CRUD (9 Tablas)</button>
+      <button class="tab-btn" onclick="switchTab('triggersTab', this)">5 Triggers (Pruebas en Vivo)</button>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 1: FLUJO DE ASESORAMIENTO (ALGORITMO DE MAPEO EN 3 ETAPAS)  -->
+    <!-- =================================================================== -->
+    <div id="asesoriaTab" class="tab-content active">
       <div class="card">
         <div class="card-title">
-          <span>Seleccionar y Ejecutar Reporte SQL</span>
-          <span class="badge badge-join" id="reportBadge">8 de 10 con JOINs</span>
+          <span><span class="step-badge">1</span>Etapa 1: Seleccionar Perfil de Necesidad y Buscar Candidatos del Catálogo</span>
+          <button class="btn-secondary btn-sm" onclick="refreshAllLookups()">Refrescar Datos</button>
         </div>
-        <div class="grid-form" style="grid-template-columns: 1fr auto;">
+        <div class="grid-form">
+          <div class="form-group">
+            <label for="wizPerfil">Perfil de Necesidad:</label>
+            <select id="wizPerfil"></select>
+          </div>
+          <div class="form-group">
+            <label for="wizCatFilter">Filtrar por Categoría o Palabra Clave (opcional):</label>
+            <input type="text" id="wizCatFilter" placeholder="Ej. AUDIFONOS, PARLANTES, TV...">
+          </div>
+          <div class="form-group" style="justify-content: flex-end;">
+            <button class="btn-primary" onclick="buscarCandidatosMapeo()">Ejecutar Algoritmo de Mapeo</button>
+          </div>
+        </div>
+        <div id="wizPerfilInfo" class="muted" style="margin-bottom:8px;"></div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th><th>Modelo</th><th>Marca</th><th>Categoría</th>
+                <th>Precio (S/)</th><th>Ahorro</th><th>Compat. Est.</th><th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="wizCandidatosBody">
+              <tr><td colspan="8" style="text-align:center;" class="muted">Selecciona un perfil y pulsa "Ejecutar Algoritmo de Mapeo".</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span><span class="step-badge">2</span>Etapa 2: Registrar Matriz Comparativa y Evaluar Candidatos</span>
+        </div>
+        <div class="grid-form">
+          <div class="form-group">
+            <label for="wizCriterio">Criterio de Evaluación: *</label>
+            <input type="text" id="wizCriterio" placeholder="Ej. Cancelación de ruido y relación calidad-precio">
+          </div>
+          <div class="form-group">
+            <label for="wizDiferencial">Diferencial Técnico:</label>
+            <input type="text" id="wizDiferencial" placeholder="Ej. Mejor autonomía y ANC dentro del presupuesto">
+          </div>
+          <div class="form-group" style="justify-content: flex-end;">
+            <button class="btn-primary" onclick="wizCrearMatriz()">Crear Matriz Comparativa</button>
+          </div>
+        </div>
+        <div class="grid-form">
+          <div class="form-group">
+            <label for="wizMatrizActiva">Matriz Activa (para agregar evaluaciones / recomendación):</label>
+            <select id="wizMatrizActiva"></select>
+          </div>
+          <div class="form-group">
+            <label for="wizEvalTexto">Resultado de Evaluación (al hacer clic en "Evaluar" arriba):</label>
+            <input type="text" id="wizEvalTexto" value="Cumple presupuesto y requisitos técnicos del perfil">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span><span class="step-badge">3</span>Etapa 3: Emitir Recomendación Final y Reporte de Asesoría</span>
+          <button class="btn-secondary btn-sm" onclick="wizVerReporteFinal()">Ver Reporte Final del Cliente</button>
+        </div>
+        <div class="grid-form">
+          <div class="form-group">
+            <label for="wizRecProd">Producto Óptimo Recomendado: *</label>
+            <select id="wizRecProd"></select>
+          </div>
+          <div class="form-group">
+            <label for="wizRecComp">Nivel de Compatibilidad (0–100%): *</label>
+            <input type="number" id="wizRecComp" step="0.01" min="0" max="100" value="92.50">
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="wizRecJust">Justificación Técnica: *</label>
+            <textarea id="wizRecJust" placeholder="Explique objetivamente por qué satisface el perfil del cliente..."></textarea>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="wizRecUso">Indicación de Uso, Instalación y Mantenimiento:</label>
+            <textarea id="wizRecUso" placeholder="Recomendaciones de instalación, uso inicial, garantía y mantenimiento..."></textarea>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn-success" onclick="wizEmitirRecomendacion()">Guardar Recomendación Final (SP)</button>
+        </div>
+        <div id="wizReporteBox" style="margin-top:14px; display:none;">
+          <div class="table-container">
+            <table><thead><tr id="wizRepHead"></tr></thead><tbody id="wizRepBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 2: 10 CONSULTAS DEL DOCUMENTO (INIFORMACION.docx)           -->
+    <!-- =================================================================== -->
+    <div id="docQueriesTab" class="tab-content">
+      <div class="card">
+        <div class="card-title">
+          <span>10 Consultas Operativas de INIFORMACION.docx (Figuras 26–35)</span>
+          <span class="badge">Parametrizables con %s</span>
+        </div>
+        <div class="grid-form" style="grid-template-columns: 1fr auto auto;">
+          <div class="form-group">
+            <label for="docQuerySelect">Seleccionar Consulta del Documento:</label>
+            <select id="docQuerySelect" onchange="onDocQueryChanged()">
+              <option value="1">1. Buscar productos según el presupuesto del cliente</option>
+              <option value="2">2. Buscar un producto según lo que necesita el cliente</option>
+              <option value="3">3. Buscar productos de una marca preferida</option>
+              <option value="4">4. Comparar productos dentro de un mismo rango de precios</option>
+              <option value="5">5. Encontrar las tres alternativas más económicas</option>
+              <option value="6">6. Consultar el perfil y las necesidades de un cliente</option>
+              <option value="7">7. Buscar productos adecuados para el cliente</option>
+              <option value="8">8. Comparar las alternativas evaluadas</option>
+              <option value="9">9. Identificar el producto recomendado óptimo</option>
+              <option value="10">10. Generar el reporte final de asesoría</option>
+            </select>
+          </div>
+          <div class="form-group" style="justify-content: flex-end;">
+            <button class="btn-primary" onclick="runDocQuery()">Ejecutar Consulta</button>
+          </div>
+          <div class="form-group" style="justify-content: flex-end;">
+            <button class="btn-secondary" onclick="exportLastTable('doc')">Exportar CSV</button>
+          </div>
+        </div>
+
+        <div id="docParamsContainer" class="grid-form"></div>
+        <p id="docQueryDesc" class="muted"></p>
+        <details style="margin-top: 10px; cursor: pointer;">
+          <summary style="font-size: 0.8rem; color: var(--primary);">Ver SQL parametrizado ejecutado</summary>
+          <div class="code-box" id="docQuerySql">Selecciona y ejecuta una consulta...</div>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Resultados de la Consulta</span>
+          <span class="muted" id="docRowCount">0 registros</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr id="docTableHead"><th>Pulsa "Ejecutar Consulta"</th></tr></thead>
+            <tbody id="docTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 3: 10 REPORTES GERENCIALES                                  -->
+    <!-- =================================================================== -->
+    <div id="reportesTab" class="tab-content">
+      <div class="card">
+        <div class="card-title">
+          <span>10 Reportes Gerenciales SQL</span>
+          <span class="badge" id="reportBadge">8 de 10 con JOINs</span>
+        </div>
+        <div class="grid-form" style="grid-template-columns: 1fr auto auto;">
           <div class="form-group">
             <label for="reportSelect">Reporte:</label>
             <select id="reportSelect" onchange="onReportSelected()">
               <option value="1">Reporte 1 (JOINs): Catálogo Completo con Marca y Categoría</option>
-              <option value="2">Reporte 2 (JOINs): Resumen de Precios por Categoría</option>
-              <option value="3">Reporte 3 (JOINs): Perfiles de Necesidad con Cliente y Asesor</option>
-              <option value="4">Reporte 4 (JOINs): Matriz Comparativa y Detalle de Evaluación</option>
-              <option value="5">Reporte 5 (JOINs): Recomendaciones Finales Técnicas</option>
-              <option value="6">Reporte 6 (JOINs): Desempeño y Carga de Asesores Técnicos</option>
+              <option value="2">Reporte 2 (JOINs): Resumen Estadístico de Precios por Categoría</option>
+              <option value="3">Reporte 3 (JOINs): Perfiles de Necesidad con Cliente, Asesor y Restricciones</option>
+              <option value="4">Reporte 4 (JOINs): Matriz Comparativa y Detalle de Evaluación Técnica</option>
+              <option value="5">Reporte 5 (JOINs): Recomendaciones Finales con Nivel de Compatibilidad</option>
+              <option value="6">Reporte 6 (JOINs): Carga de Trabajo y Desempeño de Asesores Técnicos</option>
               <option value="7">Reporte 7 (JOINs): Comparativa Financiera: Presupuesto vs Precio</option>
-              <option value="8">Reporte 8 (JOINs): Variedad y Rango de Precios por Marca</option>
+              <option value="8">Reporte 8 (JOINs): Distribución y Rango de Precios por Marca</option>
               <option value="9">Reporte 9 (Directo): Top 15 Productos de Mayor Valor</option>
               <option value="10">Reporte 10 (Directo): Distribución Porcentual por Canal de Contacto</option>
             </select>
           </div>
           <div class="form-group" style="justify-content: flex-end;">
-            <button class="btn-primary" onclick="loadReport()">Ejecutar Consulta (fetch)</button>
+            <button class="btn-primary" onclick="loadReport()">Ejecutar Reporte</button>
+          </div>
+          <div class="form-group" style="justify-content: flex-end;">
+            <button class="btn-secondary" onclick="exportLastTable('report')">Exportar CSV</button>
           </div>
         </div>
-
-        <p id="reportDesc" style="color: var(--text-muted); font-size: 0.875rem; margin-top: 8px;">
-
-        </p>
-
-        <details style="margin-top: 12px; cursor: pointer;">
-          <summary style="font-size: 0.8125rem; color: var(--primary);">Ver código SQL ejecutado</summary>
+        <p id="reportDesc" class="muted"></p>
+        <details style="margin-top: 10px; cursor: pointer;">
+          <summary style="font-size: 0.8rem; color: var(--primary);">Ver código SQL ejecutado</summary>
           <div class="code-box" id="reportSql">Cargando consulta...</div>
         </details>
       </div>
 
-      <!-- Tabla de Resultados -->
       <div class="card">
         <div class="card-title">
-          <span>Resultados de la Consulta</span>
-          <span style="font-size: 0.8125rem; color: var(--text-muted);" id="rowCountLabel">0 registros</span>
+          <span>Resultados del Reporte</span>
+          <span class="muted" id="rowCountLabel">0 registros</span>
         </div>
         <div class="table-container">
-          <table id="reportTable">
-            <thead>
-              <tr id="tableHead"><th>Presiona 'Ejecutar Consulta' para visualizar los datos</th></tr>
-            </thead>
+          <table>
+            <thead><tr id="tableHead"><th>Pulsa "Ejecutar Reporte"</th></tr></thead>
             <tbody id="tableBody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ===================================================================== -->
-    <!-- PESTAÑA 2: STORED PROCEDURES CLIENTES (CRUD)                          -->
-    <!-- ===================================================================== -->
-    <div id="clientesTab" class="tab-content">
-      <div class="card">
-        <div class="card-title">Gestión de Clientes (sp_insertar_cliente, sp_modificar_cliente, sp_eliminar_cliente)</div>
-        <div class="grid-form">
-          <div class="form-group">
-            <label for="cliDni">DNI (8 dígitos): *</label>
-            <input type="text" id="cliDni" maxlength="8" placeholder="Ej. 87654321">
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 4: GESTIÓN CRUD COMPLETA (9 ENTIDADES VÍA STORED PROCEDURES)-->
+    <!-- =================================================================== -->
+    <div id="crudTab" class="tab-content">
+      <div class="subtabs">
+        <button class="subtab-btn active" onclick="switchCrud('crudClientes', this)">1. Clientes</button>
+        <button class="subtab-btn" onclick="switchCrud('crudProductos', this)">2. Productos</button>
+        <button class="subtab-btn" onclick="switchCrud('crudAsesores', this)">3. Asesores</button>
+        <button class="subtab-btn" onclick="switchCrud('crudCategorias', this)">4. Categorías</button>
+        <button class="subtab-btn" onclick="switchCrud('crudMarcas', this)">5. Marcas</button>
+        <button class="subtab-btn" onclick="switchCrud('crudPerfiles', this)">6. Perfiles</button>
+        <button class="subtab-btn" onclick="switchCrud('crudMatrices', this)">7. Matrices</button>
+        <button class="subtab-btn" onclick="switchCrud('crudDetalles', this)">8. Evaluaciones</button>
+        <button class="subtab-btn" onclick="switchCrud('crudRecomendaciones', this)">9. Recomendaciones</button>
+      </div>
+
+      <!-- CRUD 1: CLIENTES -->
+      <div id="crudClientes" class="subtab-panel active">
+        <div class="card">
+          <div class="card-title">CRUD Clientes (sp_insertar_cliente / sp_modificar_cliente / sp_eliminar_cliente)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>DNI (8 dígitos): *</label><input id="cliDni" maxlength="8" placeholder="87654321"></div>
+            <div class="form-group"><label>Nombres: *</label><input id="cliNombres" placeholder="Ana María"></div>
+            <div class="form-group"><label>Apellidos: *</label><input id="cliApellidos" placeholder="Quispe Flores"></div>
+            <div class="form-group"><label>Canal de Contacto:</label>
+              <select id="cliCanal"><option>WhatsApp</option><option>Presencial</option><option>Teléfono</option><option>Correo</option><option>Web</option><option>Facebook</option></select>
+            </div>
+            <div class="form-group"><label>Teléfono:</label><input id="cliTelefono" placeholder="987654321"></div>
+            <div class="form-group"><label>Correo:</label><input type="email" id="cliCorreo" placeholder="cliente@ejemplo.com"></div>
           </div>
-          <div class="form-group">
-            <label for="cliNombres">Nombres: *</label>
-            <input type="text" id="cliNombres" placeholder="Ej. Ana María">
-          </div>
-          <div class="form-group">
-            <label for="cliApellidos">Apellidos: *</label>
-            <input type="text" id="cliApellidos" placeholder="Ej. Quispe Flores">
-          </div>
-          <div class="form-group">
-            <label for="cliCanal">Canal de Contacto:</label>
-            <select id="cliCanal">
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Presencial">Presencial</option>
-              <option value="Teléfono">Teléfono</option>
-              <option value="Correo">Correo</option>
-              <option value="Web">Web</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="cliTelefono">Teléfono:</label>
-            <input type="text" id="cliTelefono" placeholder="987654321">
-          </div>
-          <div class="form-group">
-            <label for="cliCorreo">Correo Electrónico:</label>
-            <input type="email" id="cliCorreo" placeholder="cliente@ejemplo.com">
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudCliente('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudCliente('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudCliente('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['cliDni','cliNombres','cliApellidos','cliTelefono','cliCorreo'])">Limpiar</button>
+            <button class="btn-secondary" onclick="listarClientes()">Refrescar</button>
           </div>
         </div>
-
-        <div class="btn-group">
-          <button class="btn-primary" onclick="spInsertarCliente()">Insertar Cliente (POST)</button>
-          <button class="btn-secondary" onclick="spModificarCliente()">Modificar Cliente (PUT)</button>
-          <button class="btn-danger" onclick="spEliminarCliente()">Eliminar Cliente (DELETE)</button>
-          <button class="btn-secondary" onclick="limpiarFormCliente()">Limpiar Formulario</button>
-          <button class="btn-secondary" onclick="listarClientes()">Refrescar Lista</button>
+        <div class="card">
+          <div class="card-title">Clientes Registrados</div>
+          <div class="table-container">
+            <table><thead><tr><th>DNI</th><th>Nombres</th><th>Apellidos</th><th>Canal</th><th>Teléfono</th><th>Correo</th><th>Acción</th></tr></thead>
+            <tbody id="clientesBody"></tbody></table>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title">Clientes Registrados en la Base de Datos</div>
-        <div class="table-container">
-          <table id="clientesTable">
-            <thead>
-              <tr>
-                <th>DNI</th>
-                <th>Nombres</th>
-                <th>Apellidos</th>
-                <th>Canal</th>
-                <th>Teléfono</th>
-                <th>Correo</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody id="clientesBody">
-              <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
-            </tbody>
-          </table>
+      <!-- CRUD 2: PRODUCTOS -->
+      <div id="crudProductos" class="subtab-panel">
+        <div class="card">
+          <div class="card-title">CRUD Productos Catálogo (sp_insertar_producto / sp_modificar_producto / sp_eliminar_producto)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>Código Producto: *</label><input id="prodCodigo" placeholder="PROD0250"></div>
+            <div class="form-group"><label>Modelo: *</label><input id="prodModelo" placeholder="JBL Live Pro 3 TWS"></div>
+            <div class="form-group"><label>Precio Referencial (S/): *</label><input type="number" step="0.01" id="prodPrecio" placeholder="499.00"></div>
+            <div class="form-group"><label>Marca: *</label><select id="prodMarca"></select></div>
+            <div class="form-group"><label>Categoría: *</label><select id="prodCat"></select></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>Especificaciones:</label><input id="prodSpecs" placeholder="Color: NEGRO, Bluetooth 5.3, ANC"></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudProducto('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudProducto('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudProducto('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['prodCodigo','prodModelo','prodPrecio','prodSpecs'])">Limpiar</button>
+            <button class="btn-secondary" onclick="listarProductos()">Refrescar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span>Productos en Catálogo</span><input id="prodSearch" placeholder="Filtrar por código o modelo..." oninput="renderProductos()" style="max-width:260px;"></div>
+          <div class="table-container">
+            <table><thead><tr><th>Código</th><th>Modelo</th><th>Marca</th><th>Categoría</th><th>Precio</th><th>Especificaciones</th><th>Acción</th></tr></thead>
+            <tbody id="productosBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRUD 3: ASESORES -->
+      <div id="crudAsesores" class="subtab-panel">
+        <div class="card">
+          <div class="card-title">CRUD Asesores Técnicos (sp_insertar_asesor / sp_modificar_asesor / sp_eliminar_asesor)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>ID Asesor (para modificar/eliminar):</label><input type="number" id="aseId" placeholder="Automático al insertar"></div>
+            <div class="form-group"><label>Nombres: *</label><input id="aseNombres" placeholder="María"></div>
+            <div class="form-group"><label>Apellidos: *</label><input id="aseApellidos" placeholder="Salazar Vega"></div>
+            <div class="form-group"><label>Especialidad:</label><input id="aseEsp" placeholder="Audio y Video"></div>
+            <div class="form-group"><label>Turno:</label>
+              <select id="aseTurno"><option value="MANANA">MANANA</option><option value="TARDE">TARDE</option><option value="NOCHE">NOCHE</option><option value="COMPLETO">COMPLETO</option></select>
+            </div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudAsesor('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudAsesor('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudAsesor('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['aseId','aseNombres','aseApellidos','aseEsp'])">Limpiar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Asesores Registrados</div>
+          <div class="table-container">
+            <table><thead><tr><th>ID</th><th>Nombres</th><th>Apellidos</th><th>Especialidad</th><th>Turno</th><th>Acción</th></tr></thead>
+            <tbody id="asesoresBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRUD 4: CATEGORÍAS -->
+      <div id="crudCategorias" class="subtab-panel">
+        <div class="card">
+          <div class="card-title">CRUD Categorías (sp_insertar_categoria / sp_modificar_categoria / sp_eliminar_categoria)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>ID Categoría (modificar/eliminar):</label><input type="number" id="catId" placeholder="Automático al insertar"></div>
+            <div class="form-group"><label>Nombre Categoría: *</label><input id="catNombre" placeholder="GAMING Y PERIFÉRICOS"></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudCategoria('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudCategoria('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudCategoria('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['catId','catNombre'])">Limpiar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Categorías Registradas</div>
+          <div class="table-container">
+            <table><thead><tr><th>ID</th><th>Nombre Categoría</th><th>Acción</th></tr></thead>
+            <tbody id="categoriasBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRUD 5: MARCAS -->
+      <div id="crudMarcas" class="subtab-panel">
+        <div class="card">
+          <div class="card-title">CRUD Marcas (sp_insertar_marca / sp_modificar_marca / sp_eliminar_marca)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>ID Marca (modificar/eliminar):</label><input type="number" id="marId" placeholder="Automático al insertar"></div>
+            <div class="form-group"><label>Nombre Marca: *</label><input id="marNombre" placeholder="SONY"></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudMarca('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudMarca('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudMarca('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['marId','marNombre'])">Limpiar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Marcas Registradas</div>
+          <div class="table-container">
+            <table><thead><tr><th>ID</th><th>Nombre Marca</th><th>Acción</th></tr></thead>
+            <tbody id="marcasBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRUD 6: PERFILES DE NECESIDAD -->
+      <div id="crudPerfiles" class="subtab-panel">
+        <div class="card">
+          <div class="card-title">CRUD Perfiles de Necesidad (sp_insertar/modificar/eliminar_perfil_necesidad)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>ID Perfil (modificar/eliminar):</label><input type="number" id="perId" placeholder="Automático al insertar"></div>
+            <div class="form-group"><label>Cliente: *</label><select id="perCliente"></select></div>
+            <div class="form-group"><label>Asesor Técnico: *</label><select id="perAsesor"></select></div>
+            <div class="form-group"><label>Marca Preferida (opcional):</label><select id="perMarca"></select></div>
+            <div class="form-group"><label>Uso Principal: *</label><input id="perUso" placeholder="Estudio y llamadas"></div>
+            <div class="form-group"><label>Presupuesto Máximo (S/): *</label><input type="number" step="0.01" id="perPres" placeholder="500.00"></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>Restricción Técnica:</label><input id="perRest" placeholder="Bluetooth, cancelación de ruido, batería > 20h"></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudPerfil('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudPerfil('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudPerfil('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['perId','perUso','perPres','perRest'])">Limpiar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Perfiles de Necesidad Registrados</div>
+          <div class="table-container">
+            <table><thead><tr><th>ID</th><th>Fecha</th><th>Cliente</th><th>Asesor</th><th>Marca Pref.</th><th>Uso</th><th>Presupuesto</th><th>Restricción</th><th>Acción</th></tr></thead>
+            <tbody id="perfilesBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRUD 7: MATRICES COMPARATIVAS -->
+      <div id="crudMatrices" class="subtab-panel">
+        <div class="card">
+          <div class="card-title">CRUD Matrices Comparativas (sp_insertar_matriz / sp_modificar_matriz / sp_eliminar_matriz)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>ID Comparativa (modificar/eliminar):</label><input type="number" id="matId" placeholder="Automático al insertar"></div>
+            <div class="form-group"><label>Perfil de Necesidad: *</label><select id="matPerfil"></select></div>
+            <div class="form-group"><label>Criterio de Evaluación: *</label><input id="matCriterio" placeholder="Calidad de sonido y presupuesto"></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>Diferencial Técnico:</label><input id="matDif" placeholder="Mejor relación costo-beneficio y autonomía"></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudMatriz('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudMatriz('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudMatriz('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['matId','matCriterio','matDif'])">Limpiar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Matrices Comparativas Registradas</div>
+          <div class="table-container">
+            <table><thead><tr><th>ID</th><th>Perfil / Cliente</th><th>Criterio</th><th>Diferencial Técnico</th><th>Acción</th></tr></thead>
+            <tbody id="matricesBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRUD 8: DETALLE EVALUACIÓN -->
+      <div id="crudDetalles" class="subtab-panel">
+        <div class="card">
+          <div class="card-title">CRUD Detalle de Evaluación (sp_insertar/modificar/eliminar_detalle_evaluacion)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>Matriz Comparativa: *</label><select id="detMatriz"></select></div>
+            <div class="form-group"><label>Producto Evaluado: *</label><select id="detProd"></select></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>Resultado de Evaluación:</label><input id="detRes" placeholder="Cumple requisitos de presupuesto y prestaciones"></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudDetalle('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudDetalle('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudDetalle('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['detRes'])">Limpiar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Evaluaciones Registradas</div>
+          <div class="table-container">
+            <table><thead><tr><th>ID Matriz</th><th>Código</th><th>Modelo</th><th>Marca</th><th>Precio</th><th>Resultado Evaluación</th><th>Acción</th></tr></thead>
+            <tbody id="detallesBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRUD 9: RECOMENDACIONES FINALES -->
+      <div id="crudRecomendaciones" class="subtab-panel">
+        <div class="card">
+          <div class="card-title">CRUD Recomendaciones Finales (sp_insertar/modificar/eliminar_recomendacion)</div>
+          <div class="grid-form">
+            <div class="form-group"><label>ID Recomendación (modificar/eliminar):</label><input type="number" id="recId" placeholder="Automático al insertar"></div>
+            <div class="form-group"><label>Matriz Comparativa: *</label><select id="recMatriz"></select></div>
+            <div class="form-group"><label>Producto Recomendado: *</label><select id="recProd"></select></div>
+            <div class="form-group"><label>Compatibilidad (0–100%):</label><input type="number" step="0.01" min="0" max="100" id="recComp" placeholder="95.00"></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>Justificación Técnica: *</label><textarea id="recJust"></textarea></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>Indicación de Uso:</label><textarea id="recUso"></textarea></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-primary" onclick="crudRecomendacion('POST')">Insertar (SP)</button>
+            <button class="btn-secondary" onclick="crudRecomendacion('PUT')">Modificar (SP)</button>
+            <button class="btn-danger" onclick="crudRecomendacion('DELETE')">Eliminar (SP)</button>
+            <button class="btn-secondary" onclick="clearInputs(['recId','recComp','recJust','recUso'])">Limpiar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recomendaciones Finales Registradas</div>
+          <div class="table-container">
+            <table><thead><tr><th>ID</th><th>Matriz / Cliente</th><th>Producto</th><th>Compat. %</th><th>Justificación</th><th>Indicación Uso</th><th>Acción</th></tr></thead>
+            <tbody id="recomendacionesBody"></tbody></table>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- ===================================================================== -->
-    <!-- PESTAÑA 3: STORED PROCEDURES PRODUCTOS (CRUD)                         -->
-    <!-- ===================================================================== -->
-    <div id="productosTab" class="tab-content">
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 5: 5 TRIGGERS DE VALIDACIÓN (PRUEBAS EN VIVO)               -->
+    <!-- =================================================================== -->
+    <div id="triggersTab" class="tab-content">
       <div class="card">
-        <div class="card-title">Gestión de Catálogo (sp_insertar_producto, sp_modificar_producto, sp_eliminar_producto)</div>
-        <div class="grid-form">
-          <div class="form-group">
-            <label for="prodCodigo">Código Producto: *</label>
-            <input type="text" id="prodCodigo" placeholder="Ej. PROD0250">
-          </div>
-          <div class="form-group">
-            <label for="prodModelo">Modelo / Nombre: *</label>
-            <input type="text" id="prodModelo" placeholder="Ej. JBL Live Pro 3 TWS">
-          </div>
-          <div class="form-group">
-            <label for="prodPrecio">Precio Referencial (S/.): *</label>
-            <input type="number" step="0.01" id="prodPrecio" placeholder="499.00">
-          </div>
-          <div class="form-group">
-            <label for="prodMarca">ID Marca: *</label>
-            <input type="number" id="prodMarca" placeholder="1 (JBL)">
-          </div>
-          <div class="form-group">
-            <label for="prodCat">ID Categoría: *</label>
-            <input type="number" id="prodCat" placeholder="1 (AUDIFONOS)">
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label for="prodSpecs">Especificaciones Técnicas:</label>
-            <input type="text" id="prodSpecs" placeholder="Color: NEGRO, Cancelación Activa de Ruido">
-          </div>
-        </div>
-
-        <div class="btn-group">
-          <button class="btn-primary" onclick="spInsertarProducto()">Insertar Producto (POST)</button>
-          <button class="btn-secondary" onclick="spModificarProducto()">Modificar Producto (PUT)</button>
-          <button class="btn-danger" onclick="spEliminarProducto()">Eliminar Producto (DELETE)</button>
-          <button class="btn-secondary" onclick="limpiarFormProducto()">Limpiar</button>
-          <button class="btn-secondary" onclick="listarProductos()">Refrescar Catálogo</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Productos en Catálogo</div>
-        <div class="table-container">
-          <table id="productosTable">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Modelo</th>
-                <th>Marca</th>
-                <th>Categoría</th>
-                <th>Precio Ref.</th>
-                <th>Especificaciones</th>
-              </tr>
-            </thead>
-            <tbody id="productosBody">
-              <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Cargando catálogo...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===================================================================== -->
-    <!-- PESTAÑA 4: TRIGGERS DE VALIDACIÓN                                     -->
-    <!-- ===================================================================== -->
-    <div id="auditoriaTab" class="tab-content">
-      <div class="card">
-        <div class="card-title">Triggers de Validación de Reglas de Negocio en PostgreSQL</div>
-        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 16px;">
-          1. <strong>trg_validar_perfil (BEFORE INSERT OR UPDATE ON perfil_de_necesidad):</strong> Valida que el presupuesto máximo sea estrictamente mayor a 0 y que la fecha de registro no sea en el futuro. Lanza una excepción PL/pgSQL si se viola la regla.<br><br>
-          2. <strong>trg_validar_cliente (BEFORE INSERT OR UPDATE ON cliente):</strong> Valida que el DNI contenga exactamente 8 dígitos numéricos mediante la expresión regular <code>^[0-9]{8}$</code> y normaliza los nombres y correos.<br><br>
-          3. <strong>trg_validar_producto (BEFORE INSERT OR UPDATE ON producto_catalogo):</strong> Valida que el código y modelo no estén vacíos y que el precio referencial no sea negativo.
+        <div class="card-title">5 Triggers de Validación de Reglas de Negocio en PostgreSQL</div>
+        <p class="muted" style="margin-bottom: 14px;">
+          Cada botón envía un caso deliberadamente inválido a PostgreSQL mediante <code>CALL</code> para demostrar que el trigger bloquea el dato corrupto directamente en el motor de base de datos (sin guardar nada).
         </p>
-        <div class="code-box">-- Ejemplo de regla del Trigger 1
-IF NEW.presupuesto_max IS NULL OR NEW.presupuesto_max &lt;= 0 THEN
-    RAISE EXCEPTION 'Regla de negocio infringida: El presupuesto debe ser mayor a 0 (recibido: %)', NEW.presupuesto_max;
-END IF;</div>
+        <div class="btn-group" style="margin-bottom: 14px;">
+          <button class="btn-warning" onclick="probarTrigger('cliente')">Probar Trigger 1: DNI inválido ("12AB")</button>
+          <button class="btn-warning" onclick="probarTrigger('producto')">Probar Trigger 2: Precio negativo (-50)</button>
+          <button class="btn-warning" onclick="probarTrigger('perfil')">Probar Trigger 3: Presupuesto &le; 0 (-100)</button>
+          <button class="btn-warning" onclick="probarTrigger('asesor')">Probar Trigger 4: Turno inválido ("MADRUGADA")</button>
+          <button class="btn-warning" onclick="probarTrigger('recomendacion')">Probar Trigger 5: Compatibilidad &gt; 100 (150%)</button>
+        </div>
+        <div class="code-box" id="triggerTestOutput">Pulsa cualquier botón arriba para verificar la excepción real devuelta por PostgreSQL...</div>
       </div>
     </div>
   </div>
 
-  <!-- ======================================================================= -->
-  <!-- JAVASCRIPT NATIVO (Zero frameworks, pure native fetch)                 -->
-  <!-- ======================================================================= -->
   <script>
-    // Configuración base de la API (detecta host actual o apunta a localhost:8000)
-    const API_BASE = window.location.port === "8000" ? "" : "http://localhost:8000";
+    const API_BASE = window.location.protocol.startsWith("http") ? window.location.origin : "http://localhost:8000";
 
-    // Función para cambiar de pestaña
-    function switchTab(tabId) {
-      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
-      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-      
-      const targetBtn = Array.from(document.querySelectorAll(".tab-btn")).find(b => b.getAttribute("onclick").includes(tabId));
-      if (targetBtn) targetBtn.classList.add("active");
-      
-      const targetContent = document.getElementById(tabId);
-      if (targetContent) targetContent.classList.add("active");
+    const CACHE = {
+      categorias: [], marcas: [], asesores: [], clientes: [],
+      productos: [], perfiles: [], matrices: [], detalles: [], recomendaciones: []
+    };
+    const LAST_EXPORT = { doc: null, report: null };
 
-      // Cargas automáticas al entrar
-      if (tabId === "clientesTab") listarClientes();
-      if (tabId === "productosTab") listarProductos();
-    }
-
-    // Muestra alerta
     function showAlert(msg, isError = false) {
       const box = document.getElementById("globalAlert");
       box.className = "alert " + (isError ? "error" : "success");
       box.textContent = msg;
       box.style.display = "block";
-      setTimeout(() => { box.style.display = "none"; }, 6000);
+      clearTimeout(window._alertTimer);
+      window._alertTimer = setTimeout(() => { box.style.display = "none"; }, 7000);
     }
 
-    // Comprobación de salud del servidor
+    function clearInputs(ids) {
+      ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    }
+
+    function escHtml(v) {
+      if (v === null || v === undefined) return "-";
+      return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    async function apiJson(url, opts = {}) {
+      const res = await fetch(`${API_BASE}${url}`, opts);
+      const data = await res.json();
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      const target = document.getElementById(tabId);
+      if (target) target.classList.add("active");
+      if (tabId === "reportesTab") loadReport();
+      if (tabId === "docQueriesTab") onDocQueryChanged();
+      if (tabId === "crudTab" || tabId === "asesoriaTab") refreshAllLookups();
+    }
+
+    function switchCrud(panelId, btn) {
+      document.querySelectorAll(".subtab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".subtab-panel").forEach(p => p.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      const p = document.getElementById(panelId);
+      if (p) p.classList.add("active");
+    }
+
+    // -------------------------------------------------------------------------
+    // SALUD Y PRUEBA DE CONEXIÓN
+    // -------------------------------------------------------------------------
     async function checkHealth() {
       const dot = document.getElementById("statusDot");
       const text = document.getElementById("statusText");
       try {
-        const res = await fetch(`${API_BASE}/api/health`);
-        if (res.ok) {
-          const data = await res.json();
+        const { ok, data } = await apiJson("/api/health");
+        if (ok && data.db_connected) {
           dot.className = "status-dot connected";
-          text.textContent = "Servidor app.py conectado";
+          const s = data.summary || {};
+          text.textContent = `PostgreSQL conectado (${data.config.database}) · ${s.tablas || 0} tablas · ${s.procedimientos || 0} SPs · ${s.triggers || 0} triggers`;
+        } else if (ok) {
+          dot.className = "status-dot error";
+          text.textContent = `app.py activo, pero PostgreSQL desconectado: ${data.error || "revisa credenciales"}`;
         } else {
           dot.className = "status-dot error";
-          text.textContent = "Servidor respondió con error HTTP " + res.status;
+          text.textContent = "Error HTTP en /api/health";
         }
       } catch (err) {
         dot.className = "status-dot error";
-        text.textContent = "Sin conexión con app.py (Inicia 'python app.py' en puerto 8000)";
+        text.textContent = "Sin conexión con app.py (inicia '.\\iniciar_ui.ps1' en puerto 8000)";
       }
     }
 
-    // -------------------------------------------------------------------------
-    // REPORTE SQL (Carga y render dinámico de tablas)
-    // -------------------------------------------------------------------------
-    async function loadReport() {
-      const select = document.getElementById("reportSelect");
-      const id = select.value;
-      const countLabel = document.getElementById("rowCountLabel");
-      const thead = document.getElementById("tableHead");
-      const tbody = document.getElementById("tableBody");
-      const sqlBox = document.getElementById("reportSql");
-
-      countLabel.textContent = "Consultando...";
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted);">Ejecutando consulta en PostgreSQL...</td></tr>`;
-
+    async function probarConexionBD() {
+      const panel = document.getElementById("diagPanel");
+      const content = document.getElementById("diagContent");
+      panel.style.display = "block";
+      content.innerHTML = "Consultando PostgreSQL...";
       try {
-        const res = await fetch(`${API_BASE}/api/reports?id=${id}`);
-        const data = await res.json();
-
-        if (!data.success) {
-          showAlert(data.error || "Error al ejecutar reporte", true);
-          tbody.innerHTML = `<tr><td colspan="10" style="color: var(--danger); text-align: center;">${data.error}</td></tr>`;
+        const { ok, data } = await apiJson("/api/test-db");
+        if (!ok || !data.success) {
+          content.innerHTML = `<div style="color:var(--danger);">Error de conexión o esquema incompleto: ${escHtml(data.error || JSON.stringify(data.missing_tables))}</div>`;
           return;
         }
-
-        sqlBox.textContent = data.sql_used;
-        countLabel.textContent = `${data.total_rows} filas recuperadas`;
-
-        // Render columnas
-        thead.innerHTML = "";
-        data.columns.forEach(col => {
-          const th = document.createElement("th");
-          th.textContent = col.replace(/_/g, " ");
-          thead.appendChild(th);
-        });
-
-        // Render filas
-        tbody.innerHTML = "";
-        if (data.rows.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="${data.columns.length}" style="text-align: center;">Sin registros coincidentes.</td></tr>`;
-        } else {
-          data.rows.forEach(row => {
-            const tr = document.createElement("tr");
-            data.columns.forEach(col => {
-              const td = document.createElement("td");
-              const val = row[col];
-              td.textContent = (val === null || val === undefined) ? "-" : val;
-              tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-          });
-        }
+        const rowsHtml = Object.entries(data.row_counts).map(([t, c]) =>
+          `<div class="kpi"><div class="kpi-label">${escHtml(t)}</div><div class="kpi-value">${c}</div></div>`
+        ).join("");
+        content.innerHTML = `
+          <div style="margin-bottom:10px;">
+            <span class="badge badge-ok">CONEXIÓN VERIFICADA</span>
+            <strong style="margin-left:8px;">BD:</strong> ${escHtml(data.database)} ·
+            <strong>Usuario:</strong> ${escHtml(data.user)} ·
+            <strong>Tablas:</strong> ${data.tables_present}/${data.tables_expected} ·
+            <strong>SPs:</strong> ${data.procedures_count} ·
+            <strong>Triggers:</strong> ${data.triggers_count}
+          </div>
+          <div class="kpi-grid">${rowsHtml}</div>
+          <div class="muted">${escHtml(data.version)}</div>
+        `;
       } catch (err) {
-        showAlert("Error de red conectando al servidor: " + err.message, true);
-        tbody.innerHTML = `<tr><td colspan="10" style="color: var(--danger); text-align: center;">No se pudo conectar a ${API_BASE}/api/reports</td></tr>`;
+        content.innerHTML = `<div style="color:var(--danger);">No se pudo conectar a app.py: ${escHtml(err.message)}</div>`;
       }
     }
 
+    // -------------------------------------------------------------------------
+    // CARGA DE CATÁLOGOS Y SELECTORES DINÁMICOS
+    // -------------------------------------------------------------------------
+    function populateSelect(id, items, valFn, labelFn, emptyLabel = null) {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = "";
+      if (emptyLabel !== null) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = emptyLabel;
+        sel.appendChild(opt);
+      }
+      items.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = valFn(item);
+        opt.textContent = labelFn(item);
+        sel.appendChild(opt);
+      });
+      if (prev && Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+    }
+
+    async function refreshAllLookups() {
+      const endpoints = [
+        ["categorias", "/api/data/categorias"],
+        ["marcas", "/api/data/marcas"],
+        ["asesores", "/api/data/asesores"],
+        ["clientes", "/api/data/clientes"],
+        ["productos", "/api/data/productos"],
+        ["perfiles", "/api/data/perfiles"],
+        ["matrices", "/api/data/matrices"],
+        ["detalles", "/api/data/detalles"],
+        ["recomendaciones", "/api/data/recomendaciones"],
+      ];
+      await Promise.all(endpoints.map(async ([key, url]) => {
+        try {
+          const { ok, data } = await apiJson(url);
+          if (ok && data[key]) CACHE[key] = data[key];
+        } catch (_) {}
+      }));
+
+      populateSelect("prodMarca", CACHE.marcas, m => m.id_marca, m => `${m.id_marca} - ${m.nombre_marca}`);
+      populateSelect("prodCat", CACHE.categorias, c => c.id_categoria, c => `${c.id_categoria} - ${c.nombre_categoria}`);
+      populateSelect("perCliente", CACHE.clientes, c => c.dni_cliente, c => `${c.dni_cliente} - ${c.nombres} ${c.apellidos}`);
+      populateSelect("perAsesor", CACHE.asesores, a => a.id_asesor, a => `${a.id_asesor} - ${a.nombres} ${a.apellidos} (${a.turno || "-"})`);
+      populateSelect("perMarca", CACHE.marcas, m => m.id_marca, m => `${m.id_marca} - ${m.nombre_marca}`, "Sin preferencia");
+      populateSelect("matPerfil", CACHE.perfiles, p => p.id_perfil, p => `#${p.id_perfil} - ${p.cliente_nombre} (S/ ${p.presupuesto_max}) - ${p.uso_principal || ""}`);
+      populateSelect("wizPerfil", CACHE.perfiles, p => p.id_perfil, p => `#${p.id_perfil} - ${p.cliente_nombre} (DNI ${p.dni_cliente} · S/ ${p.presupuesto_max})`);
+      populateSelect("detMatriz", CACHE.matrices, m => m.id_comparativa, m => `#${m.id_comparativa} (Perfil #${m.id_perfil} - ${m.cliente_nombre})`);
+      populateSelect("recMatriz", CACHE.matrices, m => m.id_comparativa, m => `#${m.id_comparativa} (Perfil #${m.id_perfil} - ${m.cliente_nombre})`);
+      populateSelect("wizMatrizActiva", CACHE.matrices, m => m.id_comparativa, m => `#${m.id_comparativa} (Perfil #${m.id_perfil} - ${m.cliente_nombre})`);
+      populateSelect("detProd", CACHE.productos, p => p.codigo_producto, p => `${p.codigo_producto} - ${p.modelo} (S/ ${p.precio_referencial})`);
+      populateSelect("recProd", CACHE.productos, p => p.codigo_producto, p => `${p.codigo_producto} - ${p.modelo} (S/ ${p.precio_referencial})`);
+      populateSelect("wizRecProd", CACHE.productos, p => p.codigo_producto, p => `${p.codigo_producto} - ${p.modelo} (S/ ${p.precio_referencial})`);
+
+      renderClientes(); renderProductos(); renderAsesores(); renderCategorias();
+      renderMarcas(); renderPerfiles(); renderMatrices(); renderDetalles(); renderRecomendaciones();
+    }
+
+    // -------------------------------------------------------------------------
+    // FLUJO DE ASESORAMIENTO (3 ETAPAS)
+    // -------------------------------------------------------------------------
+    async function buscarCandidatosMapeo() {
+      const idPerfil = document.getElementById("wizPerfil").value;
+      const cat = document.getElementById("wizCatFilter").value.trim();
+      if (!idPerfil) return showAlert("Selecciona un perfil de necesidad.", true);
+      const tbody = document.getElementById("wizCandidatosBody");
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Buscando candidatos compatibles...</td></tr>`;
+      try {
+        const { ok, data } = await apiJson(`/api/asesoria/candidatos?id_perfil=${encodeURIComponent(idPerfil)}&categoria=${encodeURIComponent(cat)}`);
+        if (!ok || !data.success) return showAlert(data.error || "Error buscando candidatos", true);
+        const p = data.perfil;
+        document.getElementById("wizPerfilInfo").innerHTML =
+          `<strong>Cliente:</strong> ${escHtml(p.cliente_nombre)} (DNI ${escHtml(p.dni_cliente)}) · <strong>Presupuesto:</strong> S/ ${p.presupuesto_max} · <strong>Marca preferida:</strong> ${escHtml(p.marca_preferida)} · <strong>Uso:</strong> ${escHtml(p.uso_principal)} · <strong>Candidatos encontrados:</strong> ${data.total_candidatos}`;
+        if (!data.candidatos.length) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;" class="muted">Sin productos que coincidan con el presupuesto y filtros del perfil.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.candidatos.map(c => `
+          <tr>
+            <td><strong>${escHtml(c.codigo_producto)}</strong></td>
+            <td>${escHtml(c.modelo)}</td>
+            <td>${escHtml(c.marca)}</td>
+            <td>${escHtml(c.categoria)}</td>
+            <td>S/ ${c.precio}</td>
+            <td>S/ ${c.ahorro_estimado}</td>
+            <td><span class="badge badge-ok">${c.compatibilidad_sugerida}%</span></td>
+            <td>
+              <button class="btn-secondary btn-sm" onclick="wizAgregarEvaluacion('${escHtml(c.codigo_producto)}')">Evaluar</button>
+              <button class="btn-primary btn-sm" onclick="wizSeleccionarRecomendado('${escHtml(c.codigo_producto)}', ${c.compatibilidad_sugerida})">Recomendar</button>
+            </td>
+          </tr>
+        `).join("");
+      } catch (err) {
+        showAlert("Error de red: " + err.message, true);
+      }
+    }
+
+    async function wizCrearMatriz() {
+      const id_perfil = parseInt(document.getElementById("wizPerfil").value, 10);
+      const criterio_evaluacion = document.getElementById("wizCriterio").value.trim();
+      const diferencial_tecnico = document.getElementById("wizDiferencial").value.trim();
+      if (!id_perfil || !criterio_evaluacion) return showAlert("Selecciona un perfil e indica el criterio de evaluación.", true);
+      const { ok, data } = await apiJson("/api/sp/insert_matriz", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_perfil, criterio_evaluacion, diferencial_tecnico })
+      });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) {
+        await refreshAllLookups();
+        if (data.id_comparativa) document.getElementById("wizMatrizActiva").value = String(data.id_comparativa);
+      }
+    }
+
+    async function wizAgregarEvaluacion(codigo) {
+      const id_comparativa = parseInt(document.getElementById("wizMatrizActiva").value, 10);
+      const resultado_evaluacion = document.getElementById("wizEvalTexto").value.trim();
+      if (!id_comparativa) return showAlert("Primero selecciona o crea una Matriz Comparativa en la Etapa 2.", true);
+      const { ok, data } = await apiJson("/api/sp/insert_detalle", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_comparativa, codigo_producto: codigo, resultado_evaluacion })
+      });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
+
+    function wizSeleccionarRecomendado(codigo, compat) {
+      document.getElementById("wizRecProd").value = codigo;
+      document.getElementById("wizRecComp").value = compat;
+      showAlert(`Producto ${codigo} precargado en Etapa 3 con compatibilidad sugerida de ${compat}%.`);
+    }
+
+    async function wizEmitirRecomendacion() {
+      const id_comparativa = parseInt(document.getElementById("wizMatrizActiva").value, 10);
+      const codigo_producto = document.getElementById("wizRecProd").value;
+      const nivel_compatibilidad = parseFloat(document.getElementById("wizRecComp").value);
+      const justificacion_tecnica = document.getElementById("wizRecJust").value.trim();
+      const indicacion_uso = document.getElementById("wizRecUso").value.trim();
+      const { ok, data } = await apiJson("/api/sp/insert_recomendacion", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_comparativa, codigo_producto, nivel_compatibilidad, justificacion_tecnica, indicacion_uso })
+      });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) {
+        await refreshAllLookups();
+        wizVerReporteFinal();
+      }
+    }
+
+    async function wizVerReporteFinal() {
+      const idPerfil = parseInt(document.getElementById("wizPerfil").value, 10);
+      const perfil = CACHE.perfiles.find(p => p.id_perfil === idPerfil);
+      const dni = perfil ? perfil.dni_cliente : "12345678";
+      const { ok, data } = await apiJson(`/api/consultas-doc?id=10&dni=${encodeURIComponent(dni)}`);
+      if (!ok || !data.success) return showAlert(data.error || "Error cargando reporte final", true);
+      document.getElementById("wizReporteBox").style.display = "block";
+      renderDynamicTable("wizRepHead", "wizRepBody", data.columns, data.rows);
+    }
+
+    // -------------------------------------------------------------------------
+    // 10 CONSULTAS DEL DOCUMENTO (INIFORMACION.docx)
+    // -------------------------------------------------------------------------
+    const DOC_PARAMS_SPEC = {
+      1: [{ k: "presupuesto", label: "Presupuesto máximo (S/)", val: "500", type: "number" }],
+      2: [{ k: "texto", label: "Palabra en modelo", val: "JBL" }, { k: "categoria", label: "Categoría", val: "AUDIFONOS" }],
+      3: [{ k: "marca", label: "Marca preferida", val: "SAMSUNG" }],
+      4: [{ k: "categoria", label: "Categoría", val: "AUDIFONOS" }, { k: "min", label: "Precio mínimo", val: "200", type: "number" }, { k: "max", label: "Precio máximo", val: "400", type: "number" }],
+      5: [{ k: "categoria", label: "Categoría", val: "PARLANTES" }],
+      6: [{ k: "dni", label: "DNI del cliente", val: "12345678" }],
+      7: [{ k: "dni", label: "DNI del cliente", val: "12345678" }, { k: "categoria", label: "Categoría", val: "AUDIFON" }],
+      8: [{ k: "dni", label: "DNI del cliente", val: "12345678" }],
+      9: [{ k: "dni", label: "DNI del cliente", val: "12345678" }],
+      10: [{ k: "dni", label: "DNI del cliente", val: "12345678" }],
+    };
+
+    function onDocQueryChanged() {
+      const id = parseInt(document.getElementById("docQuerySelect").value, 10);
+      const box = document.getElementById("docParamsContainer");
+      const specs = DOC_PARAMS_SPEC[id] || [];
+      box.innerHTML = specs.map(s => `
+        <div class="form-group">
+          <label for="docParam_${s.k}">${s.label}:</label>
+          <input type="${s.type || "text"}" id="docParam_${s.k}" value="${s.val}">
+        </div>
+      `).join("");
+      runDocQuery();
+    }
+
+    async function runDocQuery() {
+      const id = parseInt(document.getElementById("docQuerySelect").value, 10);
+      const specs = DOC_PARAMS_SPEC[id] || [];
+      const qs = new URLSearchParams({ id: String(id) });
+      specs.forEach(s => {
+        const el = document.getElementById(`docParam_${s.k}`);
+        if (el) qs.set(s.k, el.value);
+      });
+      try {
+        const { ok, data } = await apiJson(`/api/consultas-doc?${qs.toString()}`);
+        if (!ok || !data.success) return showAlert(data.error || "Error ejecutando consulta", true);
+        document.getElementById("docQueryDesc").textContent = data.description;
+        document.getElementById("docQuerySql").textContent = `${data.sql_used}\n-- Parámetros: ${JSON.stringify(data.params_used)}`;
+        document.getElementById("docRowCount").textContent = `${data.total_rows} filas recuperadas`;
+        LAST_EXPORT.doc = { name: `consulta_doc_${id}.csv`, columns: data.columns, rows: data.rows };
+        renderDynamicTable("docTableHead", "docTableBody", data.columns, data.rows);
+      } catch (err) {
+        showAlert("Error de red: " + err.message, true);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 10 REPORTES GERENCIALES
+    // -------------------------------------------------------------------------
     function onReportSelected() {
-      const select = document.getElementById("reportSelect");
-      const id = parseInt(select.value, 10);
-      const descBox = document.getElementById("reportDesc");
+      const id = parseInt(document.getElementById("reportSelect").value, 10);
       const badge = document.getElementById("reportBadge");
-
-      const descs = {
-        1: "",
-        2: "Total de productos, precio promedio, mínimo y máximo por categoría (LEFT JOIN con agregaciones).",
-        3: "Ficha completa de requerimientos del cliente con asesor y marca preferida (4 tablas con JOINs).",
-        4: "Criterios técnicos de evaluación y resultados de candidatos analizados (4 tablas con JOINs).",
-        5: "Productos finales recomendados al cliente con porcentaje de afinidad y sugerencias de uso (JOIN).",
-        6: "Cantidad de perfiles asignados por asesor y presupuesto promedio gestionado (JOIN con agrupaciones).",
-        7: "Cálculo del ahorro o saldo a favor del cliente contra la cotización del producto (5 tablas con JOINs).",
-        8: "Marcas con mayor variedad de productos en el catálogo y espectro de precios (JOIN con agregaciones).",
-        9: "Consulta analítica directa de los productos más exclusivos y de mayor valor comercial.",
-        10: "Consulta analítica directa agrupando medios de comunicación preferidos con porcentajes calculados."
-      };
-
-      descBox.textContent = descs[id] || "";
-      badge.textContent = id <= 8 ? "Consulta con JOINs" : "Consulta Agregada / Directa";
-      badge.className = id <= 8 ? "badge badge-join" : "badge";
+      badge.textContent = id <= 8 ? "Consulta con JOINs" : "Consulta Analítica Directa";
       loadReport();
     }
 
+    async function loadReport() {
+      const id = document.getElementById("reportSelect").value;
+      try {
+        const { ok, data } = await apiJson(`/api/reports?id=${encodeURIComponent(id)}`);
+        if (!ok || !data.success) return showAlert(data.error || "Error al ejecutar reporte", true);
+        document.getElementById("reportDesc").textContent = data.description;
+        document.getElementById("reportSql").textContent = data.sql_used;
+        document.getElementById("rowCountLabel").textContent = `${data.total_rows} filas recuperadas`;
+        LAST_EXPORT.report = { name: `reporte_${id}.csv`, columns: data.columns, rows: data.rows };
+        renderDynamicTable("tableHead", "tableBody", data.columns, data.rows);
+      } catch (err) {
+        showAlert("Error de red conectando a /api/reports: " + err.message, true);
+      }
+    }
+
+    function renderDynamicTable(headId, bodyId, columns, rows) {
+      const thead = document.getElementById(headId);
+      const tbody = document.getElementById(bodyId);
+      thead.innerHTML = columns.map(c => `<th>${escHtml(c.replace(/_/g, " "))}</th>`).join("");
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${Math.max(columns.length, 1)}" style="text-align:center;" class="muted">Sin registros coincidentes.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `<tr>${columns.map(c => `<td>${escHtml(r[c])}</td>`).join("")}</tr>`).join("");
+    }
+
+    function exportLastTable(kind) {
+      const pack = LAST_EXPORT[kind];
+      if (!pack || !pack.rows.length) return showAlert("No hay resultados cargados para exportar.", true);
+      const csvLines = [pack.columns.join(",")];
+      pack.rows.forEach(r => {
+        csvLines.push(pack.columns.map(c => `"${String(r[c] ?? "").replace(/"/g, '""')}"`).join(","));
+      });
+      const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = pack.name;
+      a.click();
+    }
+
     // -------------------------------------------------------------------------
-    // STORED PROCEDURES CLIENTES
+    // RENDER Y CRUD DE LAS 9 ENTIDADES
     // -------------------------------------------------------------------------
-    async function spInsertarCliente() {
-      const payload = {
-        dni: document.getElementById("cliDni").value,
-        nombres: document.getElementById("cliNombres").value,
-        apellidos: document.getElementById("cliApellidos").value,
-        canal_contacto: document.getElementById("cliCanal").value,
-        telefono: document.getElementById("cliTelefono").value,
-        correo: document.getElementById("cliCorreo").value
-      };
-
-      if (!payload.dni || !payload.nombres || !payload.apellidos) {
-        showAlert("DNI, Nombres y Apellidos son obligatorios.", true);
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_BASE}/api/sp/insert_cliente`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.success) {
-          showAlert(data.message);
-          limpiarFormCliente();
-          listarClientes();
-        } else {
-          showAlert(data.error, true);
-        }
-      } catch (err) {
-        showAlert("Error de red: " + err.message, true);
-      }
-    }
-
-    async function spModificarCliente() {
-      const payload = {
-        dni: document.getElementById("cliDni").value,
-        nombres: document.getElementById("cliNombres").value,
-        apellidos: document.getElementById("cliApellidos").value,
-        canal_contacto: document.getElementById("cliCanal").value,
-        telefono: document.getElementById("cliTelefono").value,
-        correo: document.getElementById("cliCorreo").value
-      };
-
-      if (!payload.dni) {
-        showAlert("Debes indicar el DNI del cliente a modificar.", true);
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_BASE}/api/sp/update_cliente`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.success) {
-          showAlert(data.message);
-          listarClientes();
-        } else {
-          showAlert(data.error, true);
-        }
-      } catch (err) {
-        showAlert("Error de red: " + err.message, true);
-      }
-    }
-
-    async function spEliminarCliente() {
-      const dni = document.getElementById("cliDni").value;
-      if (!dni) {
-        showAlert("Debes indicar el DNI del cliente a eliminar.", true);
-        return;
-      }
-
-      if (!confirm(`¿Confirmas eliminar al cliente con DNI ${dni}?`)) return;
-
-      try {
-        const res = await fetch(`${API_BASE}/api/sp/delete_cliente?dni=${encodeURIComponent(dni)}`, {
-          method: "DELETE"
-        });
-        const data = await res.json();
-        if (data.success) {
-          showAlert(data.message);
-          limpiarFormCliente();
-          listarClientes();
-        } else {
-          showAlert(data.error, true);
-        }
-      } catch (err) {
-        showAlert("Error de red: " + err.message, true);
-      }
-    }
-
-    async function listarClientes() {
+    function renderClientes() {
       const tbody = document.getElementById("clientesBody");
-      try {
-        const res = await fetch(`${API_BASE}/api/data/clientes`);
-        const data = await res.json();
-        if (data.clientes) {
-          tbody.innerHTML = "";
-          data.clientes.forEach(c => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td><strong>${c.dni_cliente}</strong></td>
-              <td>${c.nombres}</td>
-              <td>${c.apellidos}</td>
-              <td>${c.canal_contacto || "-"}</td>
-              <td>${c.telefono || "-"}</td>
-              <td>${c.correo || "-"}</td>
-              <td>
-                <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick='cargarFormCliente(${JSON.stringify(c)})'>Editar</button>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-      } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" style="color: var(--danger); text-align: center;">Error al cargar clientes. Verifica app.py.</td></tr>`;
-      }
+      tbody.innerHTML = CACHE.clientes.map(c => `
+        <tr>
+          <td><strong>${escHtml(c.dni_cliente)}</strong></td><td>${escHtml(c.nombres)}</td><td>${escHtml(c.apellidos)}</td>
+          <td>${escHtml(c.canal_contacto)}</td><td>${escHtml(c.telefono)}</td><td>${escHtml(c.correo)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editCliente(${JSON.stringify(c)})'>Editar</button></td>
+        </tr>`).join("");
     }
-
-    function cargarFormCliente(c) {
+    function editCliente(c) {
       document.getElementById("cliDni").value = c.dni_cliente;
       document.getElementById("cliNombres").value = c.nombres;
       document.getElementById("cliApellidos").value = c.apellidos;
@@ -770,149 +1063,343 @@ END IF;</div>
       document.getElementById("cliTelefono").value = c.telefono || "";
       document.getElementById("cliCorreo").value = c.correo || "";
     }
+    async function listarClientes() { await refreshAllLookups(); }
+    async function crudCliente(method) {
+      const dni = document.getElementById("cliDni").value.trim();
+      if (method === "DELETE") {
+        if (!dni || !confirm(`¿Eliminar cliente DNI ${dni}?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_cliente?dni=${encodeURIComponent(dni)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_cliente" : "/api/sp/update_cliente";
+      const payload = {
+        dni, nombres: document.getElementById("cliNombres").value,
+        apellidos: document.getElementById("cliApellidos").value,
+        canal_contacto: document.getElementById("cliCanal").value,
+        telefono: document.getElementById("cliTelefono").value,
+        correo: document.getElementById("cliCorreo").value
+      };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
 
-    function limpiarFormCliente() {
-      document.getElementById("cliDni").value = "";
-      document.getElementById("cliNombres").value = "";
-      document.getElementById("cliApellidos").value = "";
-      document.getElementById("cliTelefono").value = "";
-      document.getElementById("cliCorreo").value = "";
+    function renderProductos() {
+      const q = (document.getElementById("prodSearch")?.value || "").toLowerCase();
+      const rows = CACHE.productos.filter(p => !q || p.codigo_producto.toLowerCase().includes(q) || p.modelo.toLowerCase().includes(q));
+      document.getElementById("productosBody").innerHTML = rows.map(p => `
+        <tr>
+          <td><strong>${escHtml(p.codigo_producto)}</strong></td><td>${escHtml(p.modelo)}</td>
+          <td>${escHtml(p.nombre_marca)}</td><td>${escHtml(p.nombre_categoria)}</td>
+          <td>S/ ${p.precio_referencial}</td><td>${escHtml(p.especificaciones)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editProducto(${JSON.stringify(p)})'>Editar</button></td>
+        </tr>`).join("");
+    }
+    function editProducto(p) {
+      document.getElementById("prodCodigo").value = p.codigo_producto;
+      document.getElementById("prodModelo").value = p.modelo;
+      document.getElementById("prodPrecio").value = p.precio_referencial;
+      document.getElementById("prodMarca").value = String(p.id_marca);
+      document.getElementById("prodCat").value = String(p.id_categoria);
+      document.getElementById("prodSpecs").value = p.especificaciones || "";
+    }
+    async function listarProductos() { await refreshAllLookups(); }
+    async function crudProducto(method) {
+      const codigo = document.getElementById("prodCodigo").value.trim();
+      if (method === "DELETE") {
+        if (!codigo || !confirm(`¿Eliminar producto ${codigo}?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_producto?codigo=${encodeURIComponent(codigo)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_producto" : "/api/sp/update_producto";
+      const payload = {
+        codigo, modelo: document.getElementById("prodModelo").value,
+        precio: parseFloat(document.getElementById("prodPrecio").value),
+        id_marca: parseInt(document.getElementById("prodMarca").value, 10),
+        id_categoria: parseInt(document.getElementById("prodCat").value, 10),
+        especificaciones: document.getElementById("prodSpecs").value
+      };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
+
+    function renderAsesores() {
+      document.getElementById("asesoresBody").innerHTML = CACHE.asesores.map(a => `
+        <tr>
+          <td><strong>${a.id_asesor}</strong></td><td>${escHtml(a.nombres)}</td><td>${escHtml(a.apellidos)}</td>
+          <td>${escHtml(a.especialidad)}</td><td>${escHtml(a.turno)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editAsesor(${JSON.stringify(a)})'>Editar</button></td>
+        </tr>`).join("");
+    }
+    function editAsesor(a) {
+      document.getElementById("aseId").value = a.id_asesor;
+      document.getElementById("aseNombres").value = a.nombres;
+      document.getElementById("aseApellidos").value = a.apellidos;
+      document.getElementById("aseEsp").value = a.especialidad || "";
+      document.getElementById("aseTurno").value = (a.turno || "MANANA").toUpperCase();
+    }
+    async function crudAsesor(method) {
+      const id = document.getElementById("aseId").value.trim();
+      if (method === "DELETE") {
+        if (!id || !confirm(`¿Eliminar asesor ID ${id}?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_asesor?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_asesor" : "/api/sp/update_asesor";
+      const payload = {
+        id_asesor: id ? parseInt(id, 10) : null,
+        nombres: document.getElementById("aseNombres").value,
+        apellidos: document.getElementById("aseApellidos").value,
+        especialidad: document.getElementById("aseEsp").value,
+        turno: document.getElementById("aseTurno").value
+      };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
+
+    function renderCategorias() {
+      document.getElementById("categoriasBody").innerHTML = CACHE.categorias.map(c => `
+        <tr>
+          <td><strong>${c.id_categoria}</strong></td><td>${escHtml(c.nombre_categoria)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editCategoria(${JSON.stringify(c)})'>Editar</button></td>
+        </tr>`).join("");
+    }
+    function editCategoria(c) {
+      document.getElementById("catId").value = c.id_categoria;
+      document.getElementById("catNombre").value = c.nombre_categoria;
+    }
+    async function crudCategoria(method) {
+      const id = document.getElementById("catId").value.trim();
+      if (method === "DELETE") {
+        if (!id || !confirm(`¿Eliminar categoría ID ${id}?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_categoria?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_categoria" : "/api/sp/update_categoria";
+      const payload = { id_categoria: id ? parseInt(id, 10) : null, nombre_categoria: document.getElementById("catNombre").value };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
+
+    function renderMarcas() {
+      document.getElementById("marcasBody").innerHTML = CACHE.marcas.map(m => `
+        <tr>
+          <td><strong>${m.id_marca}</strong></td><td>${escHtml(m.nombre_marca)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editMarca(${JSON.stringify(m)})'>Editar</button></td>
+        </tr>`).join("");
+    }
+    function editMarca(m) {
+      document.getElementById("marId").value = m.id_marca;
+      document.getElementById("marNombre").value = m.nombre_marca;
+    }
+    async function crudMarca(method) {
+      const id = document.getElementById("marId").value.trim();
+      if (method === "DELETE") {
+        if (!id || !confirm(`¿Eliminar marca ID ${id}?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_marca?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_marca" : "/api/sp/update_marca";
+      const payload = { id_marca: id ? parseInt(id, 10) : null, nombre_marca: document.getElementById("marNombre").value };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
+
+    function renderPerfiles() {
+      document.getElementById("perfilesBody").innerHTML = CACHE.perfiles.map(p => `
+        <tr>
+          <td><strong>${p.id_perfil}</strong></td><td>${escHtml(p.fecha_registro)}</td>
+          <td>${escHtml(p.cliente_nombre)} (${escHtml(p.dni_cliente)})</td><td>${escHtml(p.asesor_nombre)}</td>
+          <td>${escHtml(p.marca_nombre)}</td><td>${escHtml(p.uso_principal)}</td>
+          <td>S/ ${p.presupuesto_max}</td><td>${escHtml(p.restriccion_tecnica)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editPerfil(${JSON.stringify(p)})'>Editar</button></td>
+        </tr>`).join("");
+    }
+    function editPerfil(p) {
+      document.getElementById("perId").value = p.id_perfil;
+      document.getElementById("perCliente").value = p.dni_cliente;
+      document.getElementById("perAsesor").value = String(p.id_asesor);
+      document.getElementById("perMarca").value = p.id_marca ? String(p.id_marca) : "";
+      document.getElementById("perUso").value = p.uso_principal || "";
+      document.getElementById("perPres").value = p.presupuesto_max;
+      document.getElementById("perRest").value = p.restriccion_tecnica || "";
+    }
+    async function crudPerfil(method) {
+      const id = document.getElementById("perId").value.trim();
+      if (method === "DELETE") {
+        if (!id || !confirm(`¿Eliminar perfil ID ${id}?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_perfil?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_perfil" : "/api/sp/update_perfil";
+      const mVal = document.getElementById("perMarca").value;
+      const payload = {
+        id_perfil: id ? parseInt(id, 10) : null,
+        dni_cliente: document.getElementById("perCliente").value,
+        id_asesor: parseInt(document.getElementById("perAsesor").value, 10),
+        id_marca: mVal ? parseInt(mVal, 10) : null,
+        uso_principal: document.getElementById("perUso").value,
+        presupuesto_max: parseFloat(document.getElementById("perPres").value),
+        restriccion_tecnica: document.getElementById("perRest").value
+      };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
+
+    function renderMatrices() {
+      document.getElementById("matricesBody").innerHTML = CACHE.matrices.map(m => `
+        <tr>
+          <td><strong>${m.id_comparativa}</strong></td>
+          <td>Perfil #${m.id_perfil} (${escHtml(m.cliente_nombre)})</td>
+          <td>${escHtml(m.criterio_evaluacion)}</td><td>${escHtml(m.diferencial_tecnico)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editMatriz(${JSON.stringify(m)})'>Editar</button></td>
+        </tr>`).join("");
+    }
+    function editMatriz(m) {
+      document.getElementById("matId").value = m.id_comparativa;
+      document.getElementById("matPerfil").value = String(m.id_perfil);
+      document.getElementById("matCriterio").value = m.criterio_evaluacion || "";
+      document.getElementById("matDif").value = m.diferencial_tecnico || "";
+    }
+    async function crudMatriz(method) {
+      const id = document.getElementById("matId").value.trim();
+      if (method === "DELETE") {
+        if (!id || !confirm(`¿Eliminar matriz ID ${id}?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_matriz?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_matriz" : "/api/sp/update_matriz";
+      const payload = {
+        id_comparativa: id ? parseInt(id, 10) : null,
+        id_perfil: parseInt(document.getElementById("matPerfil").value, 10),
+        criterio_evaluacion: document.getElementById("matCriterio").value,
+        diferencial_tecnico: document.getElementById("matDif").value
+      };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
+
+    function renderDetalles() {
+      document.getElementById("detallesBody").innerHTML = CACHE.detalles.map(d => `
+        <tr>
+          <td><strong>#${d.id_comparativa}</strong></td><td>${escHtml(d.codigo_producto)}</td>
+          <td>${escHtml(d.modelo)}</td><td>${escHtml(d.nombre_marca)}</td><td>S/ ${d.precio_referencial}</td>
+          <td>${escHtml(d.resultado_evaluacion)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editDetalle(${JSON.stringify(d)})'>Editar</button></td>
+        </tr>`).join("");
+    }
+    function editDetalle(d) {
+      document.getElementById("detMatriz").value = String(d.id_comparativa);
+      document.getElementById("detProd").value = d.codigo_producto;
+      document.getElementById("detRes").value = d.resultado_evaluacion || "";
+    }
+    async function crudDetalle(method) {
+      const id_comparativa = parseInt(document.getElementById("detMatriz").value, 10);
+      const codigo_producto = document.getElementById("detProd").value;
+      if (method === "DELETE") {
+        if (!id_comparativa || !codigo_producto || !confirm(`¿Eliminar evaluación (${id_comparativa}, ${codigo_producto})?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_detalle?id_comparativa=${id_comparativa}&codigo_producto=${encodeURIComponent(codigo_producto)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_detalle" : "/api/sp/update_detalle";
+      const payload = { id_comparativa, codigo_producto, resultado_evaluacion: document.getElementById("detRes").value };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
+    }
+
+    function renderRecomendaciones() {
+      document.getElementById("recomendacionesBody").innerHTML = CACHE.recomendaciones.map(r => `
+        <tr>
+          <td><strong>${r.id_recomendacion}</strong></td>
+          <td>Matriz #${r.id_comparativa} (${escHtml(r.cliente_nombre)})</td>
+          <td>${escHtml(r.codigo_producto)} - ${escHtml(r.modelo)}</td>
+          <td>${r.nivel_compatibilidad ?? "-"}%</td>
+          <td>${escHtml(r.justificacion_tecnica)}</td><td>${escHtml(r.indicacion_uso)}</td>
+          <td><button class="btn-secondary btn-sm" onclick='editRecomendacion(${JSON.stringify(r)})'>Editar</button></td>
+        </tr>`).join("");
+    }
+    function editRecomendacion(r) {
+      document.getElementById("recId").value = r.id_recomendacion;
+      document.getElementById("recMatriz").value = String(r.id_comparativa);
+      document.getElementById("recProd").value = r.codigo_producto;
+      document.getElementById("recComp").value = r.nivel_compatibilidad ?? "";
+      document.getElementById("recJust").value = r.justificacion_tecnica || "";
+      document.getElementById("recUso").value = r.indicacion_uso || "";
+    }
+    async function crudRecomendacion(method) {
+      const id = document.getElementById("recId").value.trim();
+      if (method === "DELETE") {
+        if (!id || !confirm(`¿Eliminar recomendación ID ${id}?`)) return;
+        const { ok, data } = await apiJson(`/api/sp/delete_recomendacion?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+        showAlert(data.message || data.error, !ok || !data.success);
+        if (ok && data.success) refreshAllLookups();
+        return;
+      }
+      const url = method === "POST" ? "/api/sp/insert_recomendacion" : "/api/sp/update_recomendacion";
+      const payload = {
+        id_recomendacion: id ? parseInt(id, 10) : null,
+        id_comparativa: parseInt(document.getElementById("recMatriz").value, 10),
+        codigo_producto: document.getElementById("recProd").value,
+        nivel_compatibilidad: document.getElementById("recComp").value ? parseFloat(document.getElementById("recComp").value) : null,
+        justificacion_tecnica: document.getElementById("recJust").value,
+        indicacion_uso: document.getElementById("recUso").value
+      };
+      const { ok, data } = await apiJson(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      showAlert(data.message || data.error, !ok || !data.success);
+      if (ok && data.success) refreshAllLookups();
     }
 
     // -------------------------------------------------------------------------
-    // STORED PROCEDURES PRODUCTOS
+    // PRUEBAS EN VIVO DE LOS 5 TRIGGERS
     // -------------------------------------------------------------------------
-    async function spInsertarProducto() {
-      const payload = {
-        codigo: document.getElementById("prodCodigo").value,
-        modelo: document.getElementById("prodModelo").value,
-        especificaciones: document.getElementById("prodSpecs").value,
-        precio: parseFloat(document.getElementById("prodPrecio").value) || 0,
-        id_marca: parseInt(document.getElementById("prodMarca").value, 10),
-        id_categoria: parseInt(document.getElementById("prodCat").value, 10)
+    async function probarTrigger(tipo) {
+      const out = document.getElementById("triggerTestOutput");
+      const tests = {
+        cliente: ["/api/sp/insert_cliente", { dni: "12AB5678", nombres: "Test", apellidos: "Trigger", canal_contacto: "Web" }],
+        producto: ["/api/sp/insert_producto", { codigo: "TEST_NEG", modelo: "Prueba Negativa", precio: -50, id_marca: 1, id_categoria: 1 }],
+        perfil: ["/api/sp/insert_perfil", { uso_principal: "Prueba", presupuesto_max: -100, dni_cliente: "12345678", id_asesor: 1 }],
+        asesor: ["/api/sp/insert_asesor", { nombres: "Test", apellidos: "Turno", especialidad: "Audio", turno: "MADRUGADA" }],
+        recomendacion: ["/api/sp/insert_recomendacion", { id_comparativa: 1, codigo_producto: "PROD0003", nivel_compatibilidad: 150, justificacion_tecnica: "Prueba fuera de rango" }]
       };
-
-      if (!payload.codigo || !payload.modelo || !payload.id_marca || !payload.id_categoria) {
-        showAlert("Código, Modelo, Marca y Categoría son campos obligatorios.", true);
-        return;
-      }
-
+      const [url, payload] = tests[tipo];
+      out.textContent = `Enviando POST ${url} con datos inválidos: ${JSON.stringify(payload)} ...`;
       try {
-        const res = await fetch(`${API_BASE}/api/sp/insert_producto`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+        const { ok, status, data } = await apiJson(url, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (data.success) {
-          showAlert(data.message);
-          limpiarFormProducto();
-          listarProductos();
-        } else {
-          showAlert(data.error, true);
-        }
+        out.textContent = `HTTP ${status} | Bloqueado por PostgreSQL: ${!ok}\nRespuesta exacta del motor:\n${JSON.stringify(data, null, 2)}`;
       } catch (err) {
-        showAlert("Error de red: " + err.message, true);
+        out.textContent = "Error de red: " + err.message;
       }
     }
 
-    async function spModificarProducto() {
-      const payload = {
-        codigo: document.getElementById("prodCodigo").value,
-        modelo: document.getElementById("prodModelo").value,
-        especificaciones: document.getElementById("prodSpecs").value,
-        precio: parseFloat(document.getElementById("prodPrecio").value) || 0,
-        id_marca: parseInt(document.getElementById("prodMarca").value, 10),
-        id_categoria: parseInt(document.getElementById("prodCat").value, 10)
-      };
-
-      if (!payload.codigo) {
-        showAlert("Indica el código del producto a modificar.", true);
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_BASE}/api/sp/update_producto`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.success) {
-          showAlert(data.message);
-          listarProductos();
-        } else {
-          showAlert(data.error, true);
-        }
-      } catch (err) {
-        showAlert("Error de red: " + err.message, true);
-      }
-    }
-
-    async function spEliminarProducto() {
-      const codigo = document.getElementById("prodCodigo").value;
-      if (!codigo) {
-        showAlert("Indica el código del producto a eliminar.", true);
-        return;
-      }
-
-      if (!confirm(`¿Eliminar el producto ${codigo}?`)) return;
-
-      try {
-        const res = await fetch(`${API_BASE}/api/sp/delete_producto?codigo=${encodeURIComponent(codigo)}`, {
-          method: "DELETE"
-        });
-        const data = await res.json();
-        if (data.success) {
-          showAlert(data.message);
-          limpiarFormProducto();
-          listarProductos();
-        } else {
-          showAlert(data.error, true);
-        }
-      } catch (err) {
-        showAlert("Error de red: " + err.message, true);
-      }
-    }
-
-    async function listarProductos() {
-      const tbody = document.getElementById("productosBody");
-      try {
-        const res = await fetch(`${API_BASE}/api/data/productos`);
-        const data = await res.json();
-        if (data.productos) {
-          tbody.innerHTML = "";
-          data.productos.slice(0, 50).forEach(p => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td><code>${p.codigo_producto}</code></td>
-              <td>${p.modelo}</td>
-              <td>${p.nombre_marca || p.id_marca}</td>
-              <td>${p.nombre_categoria || p.id_categoria}</td>
-              <td>S/. ${parseFloat(p.precio_referencial).toFixed(2)}</td>
-              <td>${p.especificaciones || "-"}</td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-      } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" style="color: var(--danger); text-align: center;">Error al cargar catálogo.</td></tr>`;
-      }
-    }
-
-    function limpiarFormProducto() {
-      document.getElementById("prodCodigo").value = "";
-      document.getElementById("prodModelo").value = "";
-      document.getElementById("prodSpecs").value = "";
-      document.getElementById("prodPrecio").value = "";
-      document.getElementById("prodMarca").value = "";
-      document.getElementById("prodCat").value = "";
-    }
-
-    // Inicio automático
-    window.addEventListener("DOMContentLoaded", () => {
-      checkHealth();
-      loadReport();
+    // Inicialización
+    window.addEventListener("DOMContentLoaded", async () => {
+      await checkHealth();
+      await refreshAllLookups();
     });
   </script>
 </body>
